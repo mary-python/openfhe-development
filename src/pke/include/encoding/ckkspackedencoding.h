@@ -69,7 +69,7 @@ public:
                                                       std::is_same<T, NativePoly::Params>::value ||
                                                       std::is_same<T, DCRTPoly::Params>::value,
                                                   bool>::type = true>
-    CKKSPackedEncoding(std::shared_ptr<T> vp, EncodingParams ep, CKKSDataType ckksdt)
+    CKKSPackedEncoding(std::shared_ptr<T> vp, EncodingParams ep, CKKSDataType ckksdt = REAL)
         : PlaintextImpl(vp, ep, CKKS_PACKED_ENCODING, CKKSRNS_SCHEME) {
         ckksDataType = ckksdt;
         slots        = GetDefaultSlotSize();
@@ -86,7 +86,7 @@ public:
                                                       std::is_same<T, DCRTPoly::Params>::value,
                                                   bool>::type = true>
     CKKSPackedEncoding(std::shared_ptr<T> vp, EncodingParams ep, const std::vector<std::complex<double>>& v,
-                       size_t nsdeg, uint32_t lvl, double scFact, uint32_t slts, CKKSDataType ckksdt)
+                       size_t nsdeg, uint32_t lvl, double scFact, uint32_t slts, CKKSDataType ckksdt = REAL)
         : PlaintextImpl(vp, ep, CKKS_PACKED_ENCODING, CKKSRNS_SCHEME), value(v) {
         ckksDataType  = ckksdt;
         scalingFactor = scFact;
@@ -129,7 +129,7 @@ public:
     CKKSPackedEncoding(const CKKSPackedEncoding& rhs)
         : PlaintextImpl(rhs), value(rhs.value), m_logError(rhs.m_logError) {}
 
-    CKKSPackedEncoding(CKKSPackedEncoding&& rhs)
+    CKKSPackedEncoding(CKKSPackedEncoding&& rhs) noexcept
         : PlaintextImpl(std::move(rhs)), value(std::move(rhs.value)), m_logError(rhs.m_logError) {}
 
     bool Encode() override;
@@ -160,11 +160,19 @@ public:
    *
    * @param a is the first number in CRT representation.
    * @param b is the second number in CRT representation.
+   * @param m
    * @return the product of the two numbers in CRT representation.
    */
     static std::vector<DCRTPoly::Integer> CRTMult(const std::vector<DCRTPoly::Integer>& a,
                                                   const std::vector<DCRTPoly::Integer>& b,
-                                                  const std::vector<DCRTPoly::Integer>& mods);
+                                                  const std::vector<DCRTPoly::Integer>& m) {
+        // TODO: add check that vector lengths match?
+        std::vector<DCRTPoly::Integer> r;
+        r.reserve(m.size());
+        for (uint32_t i = 0; i < a.size(); ++i)
+            r.emplace_back(a[i].ModMulFast(b[i], m[i]));
+        return r;
+    }
 
     /**
    * Get method to return the length of plaintext

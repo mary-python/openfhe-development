@@ -58,11 +58,13 @@
 #include "utils/type_name.h"
 
 #include <algorithm>
+#include <complex>
 #include <functional>
 #include <map>
 #include <memory>
 #include <set>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -364,6 +366,22 @@ protected:
         }
     }
 
+    void ValidateSeriesPowers(std::shared_ptr<seriesPowers<Element>> powers, CALLER_INFO_ARGS_HDR) const {
+        if (powers == nullptr) {
+            std::string errorMsg(std::string("The object for powers is nullptr") + CALLER_INFO);
+            OPENFHE_THROW(errorMsg);
+        }
+        if (powers->powersRe.size() == 0) {
+            std::string errorMsg(std::string("The powersRe member is empty") + CALLER_INFO);
+            OPENFHE_THROW(errorMsg);
+        }
+        if (Mismatched(powers->powersRe[0]->GetCryptoContext())) {
+            std::string errorMsg(std::string("Power ciphertext was not generated with the same crypto context") +
+                                 CALLER_INFO);
+            OPENFHE_THROW(errorMsg);
+        }
+    }
+
     virtual Plaintext MakeCKKSPackedPlaintextInternal(const std::vector<std::complex<double>>& value,
                                                       size_t noiseScaleDeg, uint32_t level,
                                                       const std::shared_ptr<ParmType> params, uint32_t slots) const {
@@ -642,7 +660,6 @@ public:
 
             Serial::Serialize(omap, ser, sertype);
         }
-
         return true;
     }
 
@@ -707,7 +724,7 @@ public:
     * @brief Clears EvalMultKey cache for the given context
     * @param cc the context to clear all EvalMultKey for
     */
-    static void ClearEvalMultKeys(const CryptoContext<Element> cc);
+    static void ClearEvalMultKeys(const CryptoContext<Element>& cc);
 
     /**
     * @brief Adds the given vector of keys for the given keyTag to the map of all EvalMult keys
@@ -1861,7 +1878,7 @@ public:
     * @param key secret key
     * @note the new evaluation key is stored in cryptocontext
     */
-    void EvalMultKeyGen(const PrivateKey<Element> key);
+    void EvalMultKeyGen(const PrivateKey<Element>& key);
 
     /**
     * @brief Creates a vector evalmult keys that can be used with the OpenFHE EvalMult operator
@@ -1871,7 +1888,7 @@ public:
     * 2nd key (for s^3) is used for multiplication of ciphertexts of depth 2, etc.
     * A vector of new evaluation keys is stored in crytpocontext
     */
-    void EvalMultKeysGen(const PrivateKey<Element> key);
+    void EvalMultKeysGen(const PrivateKey<Element>& key);
 
     /**
     * @brief Homomorphic multiplication of two ciphertexts using a relinearization key.
@@ -2641,8 +2658,9 @@ public:
     * @param constantVec    Corresponding weights.
     * @return Weighted sum as a ciphertext.
     */
+    template <typename VectorDataType = double>
     Ciphertext<Element> EvalLinearWSum(std::vector<ReadOnlyCiphertext<Element>>& ciphertextVec,
-                                       const std::vector<double>& constantVec) const {
+                                       const std::vector<VectorDataType>& constantVec) const {
         return GetScheme()->EvalLinearWSum(ciphertextVec, constantVec);
     }
 
@@ -2653,7 +2671,8 @@ public:
     * @param ciphertextVec  List of ciphertexts.
     * @return Weighted sum as a ciphertext.
     */
-    Ciphertext<Element> EvalLinearWSum(const std::vector<double>& constantsVec,
+    template <typename VectorDataType = double>
+    Ciphertext<Element> EvalLinearWSum(const std::vector<VectorDataType>& constantsVec,
                                        std::vector<ReadOnlyCiphertext<Element>>& ciphertextVec) const {
         return EvalLinearWSum(ciphertextVec, constantsVec);
     }
@@ -2665,8 +2684,9 @@ public:
     * @param constantsVec   Corresponding weights.
     * @return Weighted sum as a ciphertext.
     */
+    template <typename VectorDataType = double>
     Ciphertext<Element> EvalLinearWSumMutable(std::vector<Ciphertext<Element>>& ciphertextVec,
-                                              const std::vector<double>& constantsVec) const {
+                                              const std::vector<VectorDataType>& constantsVec) const {
         return GetScheme()->EvalLinearWSumMutable(ciphertextVec, constantsVec);
     }
 
@@ -2677,7 +2697,8 @@ public:
     * @param ciphertextVec  List of mutable ciphertexts.
     * @return Weighted sum as a ciphertext.
     */
-    Ciphertext<Element> EvalLinearWSumMutable(const std::vector<double>& constantsVec,
+    template <typename VectorDataType = double>
+    Ciphertext<Element> EvalLinearWSumMutable(const std::vector<VectorDataType>& constantsVec,
                                               std::vector<Ciphertext<Element>>& ciphertextVec) const {
         return EvalLinearWSumMutable(ciphertextVec, constantsVec);
     }
@@ -2687,6 +2708,22 @@ public:
     //------------------------------------------------------------------------------
 
     /**
+    * @brief Computes the powers of a ciphertext to be used when evaluating a polynomial (CKKS only).
+    *        Uses EvalPowersLinear() for low polynomial degrees (degree < 5), or EvalPowersPS() for higher degrees.
+    *
+    * @param ciphertext    Input ciphertext.
+    * @param coefficients  Polynomial coefficients (vector's size = (degree + 1)).
+    * @return Resulting structure of powers.
+    */
+
+    template <typename VectorDataType = double>
+    std::shared_ptr<seriesPowers<Element>> EvalPowers(ConstCiphertext<Element>& ciphertext,
+                                                      const std::vector<VectorDataType>& coefficients) const {
+        ValidateCiphertext(ciphertext);
+        return GetScheme()->EvalPowers(ciphertext, coefficients);
+    }
+
+    /**
     * @brief Evaluates a polynomial (given as a power series) on a ciphertext (CKKS only).
     *        Use EvalPolyLinear() for low polynomial degrees (degree < 5), or EvalPolyPS() for higher degrees.
     *
@@ -2694,10 +2731,19 @@ public:
     * @param coefficients  Polynomial coefficients (vector's size = (degree + 1)).
     * @return Resulting ciphertext.
     */
-    virtual Ciphertext<Element> EvalPoly(ConstCiphertext<Element>& ciphertext,
-                                         const std::vector<double>& coefficients) const {
+
+    template <typename VectorDataType = double>
+    Ciphertext<Element> EvalPoly(ConstCiphertext<Element>& ciphertext,
+                                 const std::vector<VectorDataType>& coefficients) const {
         ValidateCiphertext(ciphertext);
         return GetScheme()->EvalPoly(ciphertext, coefficients);
+    }
+
+    template <typename VectorDataType = double>
+    Ciphertext<Element> EvalPolyWithPrecomp(std::shared_ptr<seriesPowers<Element>> powers,
+                                            const std::vector<VectorDataType>& coefficients) const {
+        ValidateSeriesPowers(powers);
+        return GetScheme()->EvalPolyWithPrecomp(powers, coefficients);
     }
 
     /**
@@ -2708,8 +2754,9 @@ public:
     * @param coefficients  Polynomial coefficients (vector's size = degree).
     * @return Resulting ciphertext.
     */
+    template <typename VectorDataType = double>
     Ciphertext<Element> EvalPolyLinear(ConstCiphertext<Element>& ciphertext,
-                                       const std::vector<double>& coefficients) const {
+                                       const std::vector<VectorDataType>& coefficients) const {
         ValidateCiphertext(ciphertext);
         return GetScheme()->EvalPolyLinear(ciphertext, coefficients);
     }
@@ -2722,8 +2769,9 @@ public:
     * @param coefficients  Polynomial coefficients (vector's size = degree).
     * @return Resulting ciphertext.
     */
+    template <typename VectorDataType = double>
     Ciphertext<Element> EvalPolyPS(ConstCiphertext<Element>& ciphertext,
-                                   const std::vector<double>& coefficients) const {
+                                   const std::vector<VectorDataType>& coefficients) const {
         ValidateCiphertext(ciphertext);
         return GetScheme()->EvalPolyPS(ciphertext, coefficients);
     }
@@ -2731,6 +2779,27 @@ public:
     //------------------------------------------------------------------------------
     // Advanced SHE EVAL CHEBYSHEV SERIES
     //------------------------------------------------------------------------------
+
+    /**
+    * @brief Computes the Chebyshev polynomials for a ciphertext to be used when evaluating a polynomial (CKKS only).
+    *        Uses EvalChebyPolyLinear() for low polynomial degrees (degree < 5), or EvalChebyPolyPS() for higher degrees.
+    *        Uses a linear transformation to map [a, b] to [-1, 1] using linear transformation 1 + 2(x-a)/(b-a),
+    *        then applies either EvalChebyshevSeriesLinear (degree < 5) or EvalChebyshevSeriesPS depending on degree.
+    *
+    * @param ciphertext    Input ciphertext.
+    * @param coefficients  Polynomial coefficients (vector's size = (degree + 1)).
+    * @param a             Lower bound of argument for which the coefficients were found.
+    * @param b             Upper bound of argument for which the coefficients were found.
+    * @return Resulting structure of Chebyshev polynomials.
+    */
+
+    template <typename VectorDataType = double>
+    std::shared_ptr<seriesPowers<Element>> EvalChebyPolys(ConstCiphertext<Element>& ciphertext,
+                                                          const std::vector<VectorDataType>& coefficients, double a,
+                                                          double b) const {
+        ValidateCiphertext(ciphertext);
+        return GetScheme()->EvalChebyPolys(ciphertext, coefficients, a, b);
+    }
 
     /**
     * @brief Evaluates a Chebyshev interpolated polynomial on a ciphertext.
@@ -2744,10 +2813,18 @@ public:
     * @param b             Upper bound of argument for which the coefficients were found.
     * @return Resulting ciphertext.
     */
+    template <typename VectorDataType = double>
     Ciphertext<Element> EvalChebyshevSeries(ConstCiphertext<Element>& ciphertext,
-                                            const std::vector<double>& coefficients, double a, double b) const {
+                                            const std::vector<VectorDataType>& coefficients, double a, double b) const {
         ValidateCiphertext(ciphertext);
         return GetScheme()->EvalChebyshevSeries(ciphertext, coefficients, a, b);
+    }
+
+    template <typename VectorDataType = double>
+    Ciphertext<Element> EvalChebyshevSeriesWithPrecomp(std::shared_ptr<seriesPowers<Element>> polys,
+                                                       const std::vector<VectorDataType>& coefficients) const {
+        ValidateSeriesPowers(polys);
+        return GetScheme()->EvalChebyshevSeriesWithPrecomp(polys, coefficients);
     }
 
     /**
@@ -2760,8 +2837,10 @@ public:
     * @param b             Upper bound of argument for which the coefficients were found.
     * @return Resulting ciphertext.
     */
+    template <typename VectorDataType = double>
     Ciphertext<Element> EvalChebyshevSeriesLinear(ConstCiphertext<Element>& ciphertext,
-                                                  const std::vector<double>& coefficients, double a, double b) const {
+                                                  const std::vector<VectorDataType>& coefficients, double a,
+                                                  double b) const {
         ValidateCiphertext(ciphertext);
         return GetScheme()->EvalChebyshevSeriesLinear(ciphertext, coefficients, a, b);
     }
@@ -2776,8 +2855,10 @@ public:
     * @param b             Upper bound of argument for which the coefficients were found.
     * @return Resulting ciphertext.
     */
+    template <typename VectorDataType = double>
     Ciphertext<Element> EvalChebyshevSeriesPS(ConstCiphertext<Element>& ciphertext,
-                                              const std::vector<double>& coefficients, double a, double b) const {
+                                              const std::vector<VectorDataType>& coefficients, double a,
+                                              double b) const {
         ValidateCiphertext(ciphertext);
         return GetScheme()->EvalChebyshevSeriesPS(ciphertext, coefficients, a, b);
     }
@@ -3482,6 +3563,64 @@ public:
     Ciphertext<Element> EvalBootstrap(ConstCiphertext<Element>& ciphertext, uint32_t numIterations = 1,
                                       uint32_t precision = 0) const {
         return GetScheme()->EvalBootstrap(ciphertext, numIterations, precision);
+    }
+
+    template <typename VectorDataType>
+    void EvalFuncBTSetup(uint32_t numSlots, uint32_t digitSize, const std::vector<VectorDataType>& coeffs,
+                         const std::vector<uint32_t>& dim1, const std::vector<uint32_t>& levelBudget,
+                         long double scaleMod, uint32_t depthLeveledComputation = 0, size_t order = 1) {
+        GetScheme()->EvalFuncBTSetup(*this, numSlots, digitSize, coeffs, dim1, levelBudget, scaleMod,
+                                     depthLeveledComputation, order);
+    }
+
+    template <typename VectorDataType>
+    Ciphertext<Element> EvalFuncBT(ConstCiphertext<Element>& ciphertext, const std::vector<VectorDataType>& coeffs,
+                                   uint32_t digitBitSize, const BigInteger& initialScaling, uint64_t postScaling,
+                                   uint32_t levelToReduce = 0, size_t order = 1) {
+        return GetScheme()->EvalFuncBT(ciphertext, coeffs, digitBitSize, initialScaling, postScaling, levelToReduce,
+                                       order);
+    }
+
+    template <typename VectorDataType>
+    Ciphertext<Element> EvalFuncBTNoDecoding(ConstCiphertext<Element>& ciphertext,
+                                             const std::vector<VectorDataType>& coeffs, uint32_t digitBitSize,
+                                             const BigInteger& initialScaling, size_t order = 1) {
+        return GetScheme()->EvalFuncBTNoDecoding(ciphertext, coeffs, digitBitSize, initialScaling, order);
+    }
+
+    Ciphertext<Element> EvalHomDecoding(ConstCiphertext<Element>& ciphertext, uint64_t postScaling,
+                                        uint32_t levelToReduce = 0) {
+        return GetScheme()->EvalHomDecoding(ciphertext, postScaling, levelToReduce);
+    }
+
+    template <typename VectorDataType>
+    std::shared_ptr<seriesPowers<Element>> EvalMVBPrecompute(ConstCiphertext<Element>& ciphertext,
+                                                             const std::vector<VectorDataType>& coeffs,
+                                                             uint32_t digitBitSize, const BigInteger& initialScaling,
+                                                             size_t order = 1) {
+        return GetScheme()->EvalMVBPrecompute(ciphertext, coeffs, digitBitSize, initialScaling, order);
+    }
+
+    template <typename VectorDataType>
+    Ciphertext<Element> EvalMVB(const std::shared_ptr<seriesPowers<Element>> ciphertexts,
+                                const std::vector<VectorDataType>& coeffs, uint32_t digitBitSize,
+                                const uint64_t postScaling, uint32_t levelToReduce = 0, size_t order = 1) {
+        return GetScheme()->EvalMVB(ciphertexts, coeffs, digitBitSize, postScaling, levelToReduce, order);
+    }
+
+    template <typename VectorDataType>
+    Ciphertext<Element> EvalMVBNoDecoding(const std::shared_ptr<seriesPowers<Element>> ciphertexts,
+                                          const std::vector<VectorDataType>& coeffs, uint32_t digitBitSize,
+                                          size_t order = 1) {
+        return GetScheme()->EvalMVBNoDecoding(ciphertexts, coeffs, digitBitSize, order);
+    }
+
+    template <typename VectorDataType>
+    Ciphertext<Element> EvalHermiteTrigSeries(ConstCiphertext<Element>& ciphertext,
+                                              const std::vector<std::complex<double>>& coefficientsCheb, double a,
+                                              double b, const std::vector<VectorDataType>& coefficientsHerm,
+                                              size_t precomp = 0) {
+        return GetScheme()->EvalHermiteTrigSeries(ciphertext, coefficientsCheb, a, b, coefficientsHerm, precomp);
     }
 
     //------------------------------------------------------------------------------

@@ -43,6 +43,7 @@
 
 #include "math/dftransform.h"
 
+#include <cmath>
 #include <iterator>
 #include <limits>
 #include <string>
@@ -843,8 +844,8 @@ std::vector<ReadOnlyPlaintext> SWITCHCKKSRNS::EvalLTPrecomputeSwitch(
                 std::transform(vec.begin(), vec.end(), vec.begin(),
                                [&](const std::complex<double>& elem) { return elem * scale; });
 
-                result[bStep * j + i] =
-                    MakeAuxPlaintext(cc, elementParamsPtr, Rotate(Fill(vec, M / 4), offset), 1, towersToDrop, M / 4);
+                result[bStep * j + i] = MakeAuxPlaintext(
+                    cc, elementParamsPtr, Rotate(FillCompDouble(vec, M / 4), offset), 1, towersToDrop, M / 4);
             }
         }
     }
@@ -905,8 +906,8 @@ std::vector<ReadOnlyPlaintext> SWITCHCKKSRNS::EvalLTPrecomputeSwitch(
                 auto diag = ExtractShiftedDiagonal(A, bStep * j + i);
                 std::transform(diag.begin(), diag.end(), diag.begin(),
                                [&](const std::complex<double>& elem) { return elem * scale; });
-                result[bStep * j + i] =
-                    MakeAuxPlaintext(cc, elementParamsPtr, Rotate(Fill(diag, M / 4), offset), 1, towersToDrop, M / 4);
+                result[bStep * j + i] = MakeAuxPlaintext(
+                    cc, elementParamsPtr, Rotate(FillCompDouble(diag, M / 4), offset), 1, towersToDrop, M / 4);
             }
         }
     }
@@ -1096,14 +1097,14 @@ Ciphertext<DCRTPoly> SWITCHCKKSRNS::EvalLTRectWithPrecomputeSwitch(
 
     for (uint32_t j = 0; j < gStep; j++) {
         int32_t offset = (j == 0) ? 0 : -static_cast<int32_t>(bStep * j);
-        auto temp      = cc.MakeCKKSPackedPlaintext(Rotate(Fill(A[bStep * j], N / 2), offset), 1, towersToDrop,
-                                                    elementParamsPtr2, N / 2);
+        auto temp = cc.MakeCKKSPackedPlaintext(Rotate(FillCompDouble(A[bStep * j], N / 2), offset), 1, towersToDrop,
+                                               elementParamsPtr2, N / 2);
         Ciphertext<DCRTPoly> inner = EvalMultExt(cc.KeySwitchExt(ct, true), temp);
 
         for (uint32_t i = 1; i < bStep; i++) {
             if (bStep * j + i < n) {
-                auto tempi = cc.MakeCKKSPackedPlaintext(Rotate(Fill(A[bStep * j + i], N / 2), offset), 1, towersToDrop,
-                                                        elementParamsPtr2, N / 2);
+                auto tempi = cc.MakeCKKSPackedPlaintext(Rotate(FillCompDouble(A[bStep * j + i], N / 2), offset), 1,
+                                                        towersToDrop, elementParamsPtr2, N / 2);
                 EvalAddExtInPlace(inner, EvalMultExt(fastRotation[i - 1], tempi));
             }
         }
@@ -1492,10 +1493,11 @@ std::shared_ptr<std::map<usint, EvalKey<DCRTPoly>>> SWITCHCKKSRNS::EvalFHEWtoCKK
     // Check encoding and specify the number of slots, otherwise, if batchsize is set and is smaller, it will throw an error.
     Plaintext skLWEPlainswk;
     if (cryptoParams->GetScalingTechnique() == FLEXIBLEAUTOEXT)
-        skLWEPlainswk = ccCKKS->MakeCKKSPackedPlaintext(Fill(skLWEDouble, ringDim / 2), 1, BASE_NUM_LEVELS_TO_DROP,
-                                                        nullptr, ringDim / 2);
+        skLWEPlainswk = ccCKKS->MakeCKKSPackedPlaintext(FillCompDouble(skLWEDouble, ringDim / 2), 1,
+                                                        BASE_NUM_LEVELS_TO_DROP, nullptr, ringDim / 2);
     else
-        skLWEPlainswk = ccCKKS->MakeCKKSPackedPlaintext(Fill(skLWEDouble, ringDim / 2), 1, 0, nullptr, ringDim / 2);
+        skLWEPlainswk =
+            ccCKKS->MakeCKKSPackedPlaintext(FillCompDouble(skLWEDouble, ringDim / 2), 1, 0, nullptr, ringDim / 2);
 
     m_FHEWtoCKKSswk = ccCKKS->Encrypt(publicKey, skLWEPlainswk);
 
@@ -1642,7 +1644,7 @@ Ciphertext<DCRTPoly> SWITCHCKKSRNS::EvalFHEWtoCKKS(std::vector<std::shared_ptr<L
     for (int32_t j = 1; j < BT_ITER + 1; j++) {
         BminusAdotS3 = ccCKKS->EvalMult(BminusAdotS3, BminusAdotS3);
         ccCKKS->EvalAddInPlace(BminusAdotS3, BminusAdotS3);
-        double scalar = 1.0 / std::pow((2.0 * Pi), std::pow(2.0, j - BT_ITER));
+        double scalar = 1.0 / std::pow((2.0 * M_PI), std::pow(2.0, j - BT_ITER));
         ccCKKS->EvalSubInPlace(BminusAdotS3, scalar);
         if (cryptoParamsCKKS->GetScalingTechnique() == FIXEDMANUAL) {
             ccCKKS->ModReduceInPlace(BminusAdotS3);
@@ -1659,7 +1661,7 @@ Ciphertext<DCRTPoly> SWITCHCKKSRNS::EvalFHEWtoCKKS(std::vector<std::shared_ptr<L
      * the correct post-scaling factor.
      * Moreover, we have to account for the different encoding the end ciphertext should have.
      */
-    double postScale = (p >= 1 && p <= 4) ? (static_cast<double>(2) * Pi) : static_cast<double>(p);
+    double postScale = (p >= 1 && p <= 4) ? (2.0 * M_PI) : static_cast<double>(p);
     double postBias  = 0.0;
     if (pmin != 0) {
         postScale *= (pmax - pmin) / 4.0;
@@ -1771,10 +1773,11 @@ std::shared_ptr<std::map<usint, EvalKey<DCRTPoly>>> SWITCHCKKSRNS::EvalSchemeSwi
     // Check encoding and specify the number of slots, otherwise, if batchsize is set and is smaller, it will throw an error.
     Plaintext skLWEPlainswk;
     if (cryptoParams->GetScalingTechnique() == FLEXIBLEAUTOEXT)
-        skLWEPlainswk = ccCKKS->MakeCKKSPackedPlaintext(Fill(skLWEDouble, ringDim / 2), 1, BASE_NUM_LEVELS_TO_DROP,
-                                                        nullptr, ringDim / 2);
+        skLWEPlainswk = ccCKKS->MakeCKKSPackedPlaintext(FillCompDouble(skLWEDouble, ringDim / 2), 1,
+                                                        BASE_NUM_LEVELS_TO_DROP, nullptr, ringDim / 2);
     else
-        skLWEPlainswk = ccCKKS->MakeCKKSPackedPlaintext(Fill(skLWEDouble, ringDim / 2), 1, 0, nullptr, ringDim / 2);
+        skLWEPlainswk =
+            ccCKKS->MakeCKKSPackedPlaintext(FillCompDouble(skLWEDouble, ringDim / 2), 1, 0, nullptr, ringDim / 2);
 
     m_FHEWtoCKKSswk = ccCKKS->Encrypt(publicKey, skLWEPlainswk);
 

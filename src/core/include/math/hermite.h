@@ -1,7 +1,8 @@
+
 //==================================================================================
 // BSD 2-Clause License
 //
-// Copyright (c) 2014-2022, NJIT, Duality Technologies Inc. and other contributors
+// Copyright (c) 2014-2025, NJIT, Duality Technologies Inc. and other contributors
 //
 // All rights reserved.
 //
@@ -29,37 +30,33 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //==================================================================================
 
-#ifndef LBCRYPTO_CRYPTO_KEY_KEYPAIR_H
-#define LBCRYPTO_CRYPTO_KEY_KEYPAIR_H
+#ifndef LBCRYPTO_INC_MATH_HERMITE_H
+#define LBCRYPTO_INC_MATH_HERMITE_H
 
-#include "key/privatekey.h"
-#include "key/publickey.h"
+#include <complex>
+#include <cstdint>
+#include <functional>
+#include <vector>
 
-/**
- * @namespace lbcrypto
- * The namespace of lbcrypto
- */
 namespace lbcrypto {
 
-template <class Element>
-class KeyPair {
-public:
-    PublicKey<Element> publicKey;
-    PrivateKey<Element> secretKey;
+/**
+ * Method for calculating the intermediate Hermite trigonometric interpolation (of order 1)
+ * coefficients for an input function. These coefficents can be input into
+ * EvalPoly over ciphertexts encrypting exp(2*Pi*x) to evaluate the function.
+ * The coefficients are divided by 2 to account for the fact that the real part
+ * of the output of EvalPoly needs to be taken in order to get the Hermite
+ * Trigonometric Interpolation result.
+ *
+ *
+ * @param func is the function to be approximated
+ * @param p number of interpolation points
+ * @return the coefficients of the intermediate Hermite trigonometric interpolation.
+ */
 
-    KeyPair(const PublicKey<Element>& a, const PrivateKey<Element>& b) : publicKey(a), secretKey(b) {}
-
-    explicit KeyPair(PublicKeyImpl<Element>* a = nullptr, PrivateKeyImpl<Element>* b = nullptr)
-        : publicKey(a), secretKey(b) {}
-
-    bool good() const {
-        return publicKey && secretKey;
-    }
-
-    bool is_allocated() const {
-        return good();
-    }
-};
+// TODO: templatize this
+std::vector<std::complex<double>> GetHermiteTrigCoefficients(std::function<int64_t(int64_t)> func, uint32_t p,
+                                                             size_t order, double scale);
 
 }  // namespace lbcrypto
 
