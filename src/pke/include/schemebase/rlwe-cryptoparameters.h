@@ -568,11 +568,11 @@ protected:
     * @return whether the two CryptoParametersRLWE objects are equivalent.
     */
     bool CompareTo(const CryptoParametersBase<Element>& rhs) const override {
-        const auto* el = dynamic_cast<const CryptoParametersRLWE<Element>*>(&rhs);
-        if (el == nullptr)
+        auto el = dynamic_cast<const CryptoParametersRLWE*>(&rhs);
+        if (!el)
             return false;
 
-        return CryptoParametersBase<Element>::CompareTo(*el) &&
+        return CryptoParametersBase<Element>::CompareTo(rhs) &&
                m_distributionParameter == el->m_distributionParameter &&
                m_assuranceMeasure == el->m_assuranceMeasure && m_noiseScale == el->m_noiseScale &&
                m_digitSize == el->m_digitSize && m_noiseEstimate == el->m_noiseEstimate &&

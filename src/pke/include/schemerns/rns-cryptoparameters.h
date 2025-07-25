@@ -154,8 +154,8 @@ protected:
     * @return whether the two CryptoParametersRNS objects are equivalent.
     */
     bool CompareTo(const CryptoParametersBase<DCRTPoly>& rhs) const override {
-        const auto* el = dynamic_cast<const CryptoParametersRNS*>(&rhs);
-        if (el == nullptr)
+        auto el = dynamic_cast<const CryptoParametersRNS*>(&rhs);
+        if (!el)
             return false;
 
         return CryptoParametersRLWE<DCRTPoly>::CompareTo(rhs) && m_scalTechnique == el->m_scalTechnique &&
@@ -165,6 +165,7 @@ protected:
                m_multipartyMode == el->m_multipartyMode && m_executionMode == el->m_executionMode &&
                m_compositeDegree == el->m_compositeDegree && m_registerWordSize == el->m_registerWordSize &&
                m_ckksDataType == el->m_ckksDataType;
+
     }
 
     void PrintParameters(std::ostream& os) const override {
