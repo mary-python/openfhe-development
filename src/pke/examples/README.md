@@ -134,7 +134,7 @@ If the set function is called for a parameter which is not available for the giv
 
 **float standardDeviation** - error distribution parameter (recommended for advanced users), used for Gaussian error generation. The set method is `SetStandardDeviation`.
 
-**SecretKeyDist secretKeyDist** - secret key distribution: GAUSSIAN, UNIFORM_TERNARY, SPARSE_TERNARY. The set method is `SetSecretKeyDist`.
+**SecretKeyDist secretKeyDist** - secret key distribution: GAUSSIAN, UNIFORM_TERNARY, SPARSE_TERNARY, SPARSE_ENCAPSULATED. The set method is `SetSecretKeyDist`.
 
 **uint32_t maxRelinSkDeg** - max relinearization degree of secret key polynomial (used for lazy relinearization). The set method is `SetMaxRelinSkDeg`.
 

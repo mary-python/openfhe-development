@@ -44,6 +44,8 @@ SecretKeyDist convertToSecretKeyDist(const std::string& str) {
         return UNIFORM_TERNARY;
     else if (str == "SPARSE_TERNARY")
         return SPARSE_TERNARY;
+    else if (str == "SPARSE_ENCAPSULATED")
+        return SPARSE_ENCAPSULATED;
     // else if (str == "BINARY")
     //     return BINARY;
 
@@ -56,6 +58,7 @@ SecretKeyDist convertToSecretKeyDist(uint32_t num) {
         case GAUSSIAN:
         case UNIFORM_TERNARY:
         case SPARSE_TERNARY:
+        case SPARSE_ENCAPSULATED:
             // case BINARY:
             return keyDist;
         default:
@@ -75,6 +78,9 @@ std::ostream& operator<<(std::ostream& s, SecretKeyDist m) {
             break;
         case SPARSE_TERNARY:
             s << "SPARSE_TERNARY";
+            break;
+        case SPARSE_ENCAPSULATED:
+            s << "SPARSE_ENCAPSULATED";
             break;
             // case BINARY:
             //     s << "BINARY";

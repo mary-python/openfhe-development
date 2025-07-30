@@ -45,7 +45,9 @@ enum SecretKeyDist {
     GAUSSIAN        = 0,
     UNIFORM_TERNARY = 1,  // Default value, all schemes support this key distribution
     SPARSE_TERNARY  = 2,
-    // BINARY = 3, // Future implementation
+    SPARSE_ENCAPSULATED =
+        3,  // for more effient bootstrapping in SIMD schemes (has been used for CKKS and BFV bootstrapping in literature)
+    // BINARY = X, // Future implementation
 };
 SecretKeyDist convertToSecretKeyDist(const std::string& str);
 SecretKeyDist convertToSecretKeyDist(uint32_t num);
