@@ -3650,10 +3650,13 @@ Ciphertext<DCRTPoly> FHECKKSRNS::KeySwitchSparse(Ciphertext<DCRTPoly>& ciphertex
 
     NativeInteger pModInvq = modulusp.ModInverse(modulusq);
 
-    // scale down by p
+    // modswitch cvRes from p*q to q, i.e., compute round(cvRes/p) mod q
+    // In RNS, we use the technique described in Appendix B.2.2 of https://eprint.iacr.org/2021/204 for the BFV case, i.e., for t=1.
     for (usint i = 0; i < 2; i++) {
         auto polyP = cvRes[i].GetElementAtIndex(1);
+        polyP.SetFormat(Format::COEFFICIENT);
         polyP.SwitchModulus(modulusq, rootq, 0, 0);
+        polyP.SetFormat(Format::EVALUATION);
         cvRes[i].DropLastElement();
         auto polyQ = cvRes[i].GetElementAtIndex(0);
         polyQ -= polyP;
