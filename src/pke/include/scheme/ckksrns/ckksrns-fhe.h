@@ -127,6 +127,9 @@ using namespace std::literals::complex_literals;
 
 class FHECKKSRNS : public FHERNS {
     using ParmType = typename DCRTPoly::Params;
+    using DugType  = typename DCRTPoly::DugType;
+    using DggType  = typename DCRTPoly::DggType;
+    using TugType  = typename DCRTPoly::TugType;
 
 public:
     virtual ~FHECKKSRNS() = default;
@@ -273,6 +276,9 @@ public:
     static uint32_t AdjustDepthFuncBT(const std::vector<VectorDataType>& coefficients, const BigInteger& PInput,
                                       size_t order);
 
+    // YSP Should probably be removed or moved somewhere else
+    static void TestKeySwitchSparse(PrivateKey<DCRTPoly> sk, Ciphertext<DCRTPoly> ct);
+
     std::string SerializedObjectName() const {
         return "FHECKKSRNS";
     }
@@ -319,6 +325,13 @@ private:
 
     Ciphertext<DCRTPoly> Conjugate(ConstCiphertext<DCRTPoly> ciphertext,
                                    const std::map<uint32_t, EvalKey<DCRTPoly>>& evalKeys) const;
+
+    // generates a key going from a denser secret to a sparser one
+    EvalKey<DCRTPoly> KeySwitchGenSparse(const PrivateKey<DCRTPoly> oldPrivateKey,
+                                         const PrivateKey<DCRTPoly> newPrivateKey) const;
+
+    // generates a key going from a denser secret to a sparser one
+    Ciphertext<DCRTPoly> KeySwitchSparse(Ciphertext<DCRTPoly>& ciphertext, const EvalKey<DCRTPoly> ek) const;
 
     /**
    * Set modulus and recalculates the vector values to fit the modulus

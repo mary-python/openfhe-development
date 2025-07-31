@@ -44,6 +44,7 @@
 #include "utils/exception.h"
 #include "utils/parallel.h"
 #include "utils/utilities.h"
+#include "key/evalkeyrelin.h"
 
 #include <algorithm>
 #include <cmath>
@@ -58,6 +59,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <iostream>
 
 namespace {
 // GetBigModulus() calculates the big modulus as the product of
@@ -3550,5 +3552,148 @@ template uint32_t FHECKKSRNS::AdjustDepthFuncBT(const std::vector<int64_t>& coef
                                                 size_t order);
 template uint32_t FHECKKSRNS::AdjustDepthFuncBT(const std::vector<std::complex<double>>& coefficients,
                                                 const BigInteger& PInput, size_t order);
+
+EvalKey<DCRTPoly> FHECKKSRNS::KeySwitchGenSparse(const PrivateKey<DCRTPoly> oldPrivateKey,
+                                                 const PrivateKey<DCRTPoly> newPrivateKey) const {
+    EvalKeyRelin<DCRTPoly> ek(std::make_shared<EvalKeyRelinImpl<DCRTPoly>>(newPrivateKey->GetCryptoContext()));
+    const auto cryptoParams = std::dynamic_pointer_cast<CryptoParametersCKKSRNS>(newPrivateKey->GetCryptoParameters());
+
+    const std::shared_ptr<ParmType> paramsQ = cryptoParams->GetElementParams();
+    const auto paramsP                      = cryptoParams->GetParamsP();
+
+    const DggType& dgg = cryptoParams->GetDiscreteGaussianGenerator();
+    DugType dug;
+
+    // Build params for p*q (used for sparse encapsulation)
+    uint32_t sizeqp = 2;
+    std::vector<NativeInteger> moduli(sizeqp);
+    std::vector<NativeInteger> roots(sizeqp);
+    moduli[0]     = paramsQ->GetParams()[0]->GetModulus();
+    roots[0]      = paramsQ->GetParams()[0]->GetRootOfUnity();
+    moduli[1]     = paramsP->GetParams()[0]->GetModulus();
+    roots[1]      = paramsP->GetParams()[0]->GetRootOfUnity();
+    auto paramsqp = std::make_shared<typename DCRTPoly::Params>(2 * paramsQ->GetRingDimension(), moduli, roots);
+
+    const DCRTPoly& sOld = oldPrivateKey->GetPrivateElement();
+    const DCRTPoly& sNew = newPrivateKey->GetPrivateElement();
+
+    // creates the old key in pq
+    DCRTPoly sOldExt(paramsqp, Format::COEFFICIENT, true);
+    auto polysOld = sOld.GetElementAtIndex(0);
+    polysOld.SetFormat(COEFFICIENT);
+    sOldExt.SetElementAtIndex(0, polysOld);
+    polysOld.SwitchModulus(moduli[1], roots[1], 0, 0);
+    sOldExt.SetElementAtIndex(1, polysOld);
+    sOldExt.SetFormat(Format::EVALUATION);
+
+    // creates the new key in pq
+    DCRTPoly sNewExt(paramsqp, Format::COEFFICIENT, true);
+    auto polysNew = sNew.GetElementAtIndex(0);
+    polysNew.SetFormat(COEFFICIENT);
+    sNewExt.SetElementAtIndex(0, polysNew);
+    polysNew.SwitchModulus(moduli[1], roots[1], 0, 0);
+    sNewExt.SetElementAtIndex(1, polysNew);
+    sNewExt.SetFormat(Format::EVALUATION);
+
+    DCRTPoly a(dug, paramsqp, Format::EVALUATION);
+    DCRTPoly e(dgg, paramsqp, Format::EVALUATION);
+    DCRTPoly b(paramsqp, Format::EVALUATION, true);
+
+    NativeInteger pModq = moduli[1].Mod(moduli[0]);
+
+    // computes the switching key for the GHS case
+    for (size_t i = 0; i < sizeqp; ++i) {
+        auto ai    = a.GetElementAtIndex(i);
+        auto ei    = e.GetElementAtIndex(i);
+        auto sNewi = sNewExt.GetElementAtIndex(i);
+
+        if (i == 1) {
+            b.SetElementAtIndex(i, -ai * sNewi + ei);
+        }
+        else {
+            auto sOldi = sOld.GetElementAtIndex(i);
+            b.SetElementAtIndex(i, -ai * sNewi + pModq * sOldi + ei);
+        }
+    }
+
+    ek->SetAVector({a});
+    ek->SetBVector({b});
+    ek->SetKeyTag(newPrivateKey->GetKeyTag());
+    return ek;
+}
+
+Ciphertext<DCRTPoly> FHECKKSRNS::KeySwitchSparse(Ciphertext<DCRTPoly>& ciphertext, const EvalKey<DCRTPoly> ek) const {
+    std::vector<DCRTPoly>& cv = ciphertext->GetElements();
+
+    const std::vector<DCRTPoly>& bv = ek->GetBVector();
+    const std::vector<DCRTPoly>& av = ek->GetAVector();
+
+    auto paramsqp = ek->GetAVector()[0].GetParams();
+    auto modulusq = paramsqp->GetParams()[0]->GetModulus();
+    auto rootq    = paramsqp->GetParams()[0]->GetRootOfUnity();
+    auto modulusp = paramsqp->GetParams()[1]->GetModulus();
+    auto rootp    = paramsqp->GetParams()[1]->GetRootOfUnity();
+
+    // extend cv[1] from q to qp
+    DCRTPoly c1Ext(paramsqp, Format::EVALUATION, true);
+    c1Ext.SetElementAtIndex(0, cv[1].GetElementAtIndex(0));
+    auto poly = cv[1].GetElementAtIndex(0);
+    poly.SetFormat(Format::COEFFICIENT);
+    poly.SwitchModulus(modulusp, rootp, 0, 0);
+    poly.SetFormat(Format::EVALUATION);
+    c1Ext.SetElementAtIndex(1, std::move(poly));
+
+    // multiply by the evaluation key
+    std::vector<DCRTPoly> cvRes(2);
+    cvRes[0] = c1Ext * bv[0];
+    cvRes[1] = c1Ext * av[0];
+
+    NativeInteger pModInvq = modulusp.ModInverse(modulusq);
+
+    // scale down by p
+    for (usint i = 0; i < 2; i++) {
+        auto polyP = cvRes[i].GetElementAtIndex(1);
+        polyP.SwitchModulus(modulusq, rootq, 0, 0);
+        cvRes[i].DropLastElement();
+        auto polyQ = cvRes[i].GetElementAtIndex(0);
+        polyQ -= polyP;
+        polyQ *= pModInvq;
+        cvRes[i].SetElementAtIndex(0, polyQ);
+    }
+
+    // add to the original ciphertext
+    cvRes[0] += cv[0];
+
+    auto result = ciphertext->CloneEmpty();
+    result->SetElements(cvRes);
+
+    return result;
+}
+
+void FHECKKSRNS::TestKeySwitchSparse(PrivateKey<DCRTPoly> sk, Ciphertext<DCRTPoly> ct) {
+    const auto cc = sk->GetCryptoContext();
+
+    FHECKKSRNS FHECKKS;
+
+    TugType tug;
+
+    PrivateKey<DCRTPoly> skNew = std::make_shared<PrivateKeyImpl<DCRTPoly>>(cc);
+
+    const auto cryptoParams = std::dynamic_pointer_cast<CryptoParametersCKKSRNS>(sk->GetCryptoParameters());
+
+    const std::shared_ptr<ParmType> paramsQ = cryptoParams->GetElementParams();
+
+    DCRTPoly sNew(tug, paramsQ, Format::EVALUATION, 32);
+    skNew->SetPrivateElement(std::move(sNew));
+
+    auto evalKey = FHECKKS.KeySwitchGenSparse(sk, skNew);
+
+    auto ctresult = FHECKKS.KeySwitchSparse(ct, evalKey);
+
+    Plaintext result;
+    cc->Decrypt(skNew, ctresult, &result);
+    result->SetLength(8);
+    std::cout << "Result after decryption = " << result << std::endl;
+}
 
 }  // namespace lbcrypto
