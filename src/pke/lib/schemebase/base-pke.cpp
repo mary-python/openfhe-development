@@ -36,6 +36,10 @@
 #include "schemebase/rlwe-cryptoparameters.h"
 #include "cryptocontext.h"
 
+#include <memory>
+#include <utility>
+#include <vector>
+
 namespace lbcrypto {
 
 // makeSparse is not used by this scheme
@@ -68,6 +72,7 @@ KeyPair<Element> PKEBase<Element>::KeyGenInternal(CryptoContext<Element> cc, boo
             s = Element(tug, paramsPK, Format::EVALUATION);
             break;
         case SPARSE_TERNARY:
+        case SPARSE_ENCAPSULATED:
             // https://github.com/openfheorg/openfhe-development/issues/311
             s = Element(tug, paramsPK, Format::EVALUATION, 192);
             break;

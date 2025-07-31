@@ -187,8 +187,17 @@ void FHECKKSRNS::EvalBootstrapSetup(const CryptoContextImpl<DCRTPoly>& cc, std::
 
         uint128_t factor = ((uint128_t)1 << (static_cast<uint32_t>(std::round(std::log2(qDouble)))));
         double pre       = (compositeDegree > 1) ? 1.0 : qDouble / factor;
-        double k         = (cryptoParams->GetSecretKeyDist() == SPARSE_TERNARY) ? K_SPARSE : 1.0;
-        double scaleEnc  = pre / k;
+        double k;
+        if (cryptoParams->GetSecretKeyDist() == UNIFORM_TERNARY) {
+            k = 1.0;
+        }
+        else if (cryptoParams->GetSecretKeyDist() == SPARSE_TERNARY) {
+            k = K_SPARSE;
+        }
+        else {
+            k = K_SPARSE_ENCAPSULATED;
+        }
+        double scaleEnc = pre / k;
         // TODO: YSP Can be extended to FLEXIBLE* scaling techniques as well as the closeness of 2^p to moduli is no longer needed
         double scaleDec = (compositeDegree > 1) ? qDouble / cryptoParams->GetScalingFactorReal(0) : 1 / pre;
 
@@ -243,6 +252,8 @@ std::shared_ptr<std::map<uint32_t, EvalKey<DCRTPoly>>> FHECKKSRNS::EvalBootstrap
     const PrivateKey<DCRTPoly> privateKey, uint32_t slots) {
     const auto cryptoParams = std::dynamic_pointer_cast<CryptoParametersCKKSRNS>(privateKey->GetCryptoParameters());
 
+    TugType tug;
+
     if (cryptoParams->GetKeySwitchTechnique() != HYBRID)
         OPENFHE_THROW("CKKS Bootstrapping is only supported for the Hybrid key switching method.");
 #if NATIVEINT == 128
@@ -251,15 +262,27 @@ std::shared_ptr<std::map<uint32_t, EvalKey<DCRTPoly>>> FHECKKSRNS::EvalBootstrap
 #endif
     auto cc    = privateKey->GetCryptoContext();
     uint32_t M = cc->GetCyclotomicOrder();
+    auto algo  = cc->GetScheme();
 
     if (slots == 0)
         slots = M / 4;
     // computing all indices for baby-step giant-step procedure
-    auto algo     = cc->GetScheme();
     auto evalKeys = algo->EvalAtIndexKeyGen(nullptr, privateKey, FindBootstrapRotationIndices(slots, M));
 
     auto conjKey       = ConjugateKeyGen(privateKey);
     (*evalKeys)[M - 1] = conjKey;
+
+    if (cryptoParams->GetSecretKeyDist() == SPARSE_ENCAPSULATED) {
+        const std::shared_ptr<ParmType> paramsQ = cryptoParams->GetElementParams();
+        // sparse key used for the modraising step
+        PrivateKey<DCRTPoly> skNew = std::make_shared<PrivateKeyImpl<DCRTPoly>>(cc);
+        DCRTPoly sNew(tug, paramsQ, Format::EVALUATION, 32);
+        skNew->SetPrivateElement(std::move(sNew));
+        // we reserve M-4 and M-2 for the sparse encapsulation switching keys
+        // Even autorphism indices are not possible, so there will not be any conflict
+        (*evalKeys)[M - 4] = KeySwitchGenSparse(privateKey, skNew);
+        (*evalKeys)[M - 2] = algo->KeySwitchGen(skNew, privateKey);
+    }
 
     return evalKeys;
 }
@@ -315,9 +338,18 @@ void FHECKKSRNS::EvalBootstrapPrecompute(const CryptoContextImpl<DCRTPoly>& cc, 
 
     uint128_t factor = ((uint128_t)1 << (static_cast<uint32_t>(std::round(std::log2(qDouble)))));
     double pre       = qDouble / factor;
-    double k         = (cryptoParams->GetSecretKeyDist() == SPARSE_TERNARY) ? K_SPARSE : 1.0;
-    double scaleEnc  = (compositeDegree > 1) ? 1.0 / k : pre / k;
-    double scaleDec  = (compositeDegree > 1) ? k * qDouble / cryptoParams->GetScalingFactorReal(0) : 1 / pre;
+    double k;
+    if (cryptoParams->GetSecretKeyDist() == UNIFORM_TERNARY) {
+        k = 1.0;
+    }
+    else if (cryptoParams->GetSecretKeyDist() == SPARSE_TERNARY) {
+        k = K_SPARSE;
+    }
+    else {
+        k = K_SPARSE_ENCAPSULATED;
+    }
+    double scaleEnc = (compositeDegree > 1) ? 1.0 / k : pre / k;
+    double scaleDec = (compositeDegree > 1) ? k * qDouble / cryptoParams->GetScalingFactorReal(0) : 1 / pre;
 
     uint32_t approxModDepth = GetModDepthInternal(cryptoParams->GetSecretKeyDist());
     uint32_t depthBT        = approxModDepth + precom->m_paramsEnc[CKKS_BOOT_PARAMS::LEVEL_BUDGET] +
@@ -516,21 +548,47 @@ Ciphertext<DCRTPoly> FHECKKSRNS::EvalBootstrap(ConstCiphertext<DCRTPoly> ciphert
     if (compositeDegree > 1) {
         // RNS basis extension from level 0 RNS limbs to the raised RNS basis
         ExtendCiphertext(ctxtDCRT, *cc, elementParamsRaisedPtr);
+        raised->SetLevel(L0 - ctxtDCRT[0].GetNumOfElements());
+        raised->SetElements(std::move(ctxtDCRT));
     }
     else {
-        // We only use the level 0 ciphertext here. All other towers are automatically ignored to make
-        // CKKS bootstrapping faster.
-        for (size_t i = 0; i < ctxtDCRT.size(); i++) {
-            DCRTPoly temp(elementParamsRaisedPtr, COEFFICIENT);
-            ctxtDCRT[i].SetFormat(COEFFICIENT);
-            temp = ctxtDCRT[i].GetElementAtIndex(0);
-            temp.SetFormat(EVALUATION);
-            ctxtDCRT[i] = temp;
+        if (cryptoParams->GetSecretKeyDist() == SPARSE_ENCAPSULATED) {
+            auto evalKeyMap = cc->GetEvalAutomorphismKeyMap(raised->GetKeyTag());
+
+            // transform from a denser secret to a sparser one
+            raised   = KeySwitchSparse(raised, evalKeyMap.at(2 * N - 4));
+            ctxtDCRT = raised->GetElements();
+
+            // We only use the level 0 ciphertext here. All other towers are automatically ignored to make
+            // CKKS bootstrapping faster.
+            for (size_t i = 0; i < ctxtDCRT.size(); i++) {
+                DCRTPoly temp(elementParamsRaisedPtr, COEFFICIENT);
+                ctxtDCRT[i].SetFormat(COEFFICIENT);
+                temp = ctxtDCRT[i].GetElementAtIndex(0);
+                temp.SetFormat(EVALUATION);
+                ctxtDCRT[i] = temp;
+            }
+
+            raised->SetLevel(L0 - ctxtDCRT[0].GetNumOfElements());
+            raised->SetElements(std::move(ctxtDCRT));
+
+            // go back to a denser secret
+            algo->KeySwitchInPlace(raised, evalKeyMap.at(2 * N - 2));
+        }
+        else {
+            // We only use the level 0 ciphertext here. All other towers are automatically ignored to make
+            // CKKS bootstrapping faster.
+            for (size_t i = 0; i < ctxtDCRT.size(); i++) {
+                DCRTPoly temp(elementParamsRaisedPtr, COEFFICIENT);
+                ctxtDCRT[i].SetFormat(COEFFICIENT);
+                temp = ctxtDCRT[i].GetElementAtIndex(0);
+                temp.SetFormat(EVALUATION);
+                ctxtDCRT[i] = temp;
+            }
+            raised->SetLevel(L0 - ctxtDCRT[0].GetNumOfElements());
+            raised->SetElements(std::move(ctxtDCRT));
         }
     }
-
-    raised->SetLevel(L0 - ctxtDCRT[0].GetNumOfElements());
-    raised->SetElements(std::move(ctxtDCRT));
 
 #ifdef BOOTSTRAPTIMING
     std::cerr << "\nNumber of levels at the beginning of bootstrapping: "
@@ -549,6 +607,10 @@ Ciphertext<DCRTPoly> FHECKKSRNS::EvalBootstrap(ConstCiphertext<DCRTPoly> ciphert
         coefficients = g_coefficientsSparse;
         // k = K_SPARSE;
         k = 1.0;  // do not divide by k as we already did it during precomputation
+    }
+    else if (cryptoParams->GetSecretKeyDist() == SPARSE_ENCAPSULATED) {
+        coefficients = g_coefficientsSparseEncapsulated;
+        k            = 1.0;  // do not divide by k as we already did it during precomputation
     }
     else {
         // For larger composite degrees, larger K needs to be used to achieve a reasonable probability of failure
@@ -622,20 +684,17 @@ Ciphertext<DCRTPoly> FHECKKSRNS::EvalBootstrap(ConstCiphertext<DCRTPoly> ciphert
         ctxtEncI = cc->EvalChebyshevSeries(ctxtEncI, coefficients, coeffLowerBound, coeffUpperBound);
 
         // Double-angle iterations
-        if ((cryptoParams->GetSecretKeyDist() == UNIFORM_TERNARY) ||
-            (cryptoParams->GetSecretKeyDist() == SPARSE_TERNARY)) {
-            if (cryptoParams->GetScalingTechnique() != FIXEDMANUAL) {
-                algo->ModReduceInternalInPlace(ctxtEnc, compositeDegree);
-                algo->ModReduceInternalInPlace(ctxtEncI, compositeDegree);
-            }
-            uint32_t numIter;
-            if (cryptoParams->GetSecretKeyDist() == UNIFORM_TERNARY)
-                numIter = R_UNIFORM;
-            else
-                numIter = R_SPARSE;
-            ApplyDoubleAngleIterations(ctxtEnc, numIter);
-            ApplyDoubleAngleIterations(ctxtEncI, numIter);
+        if (cryptoParams->GetScalingTechnique() != FIXEDMANUAL) {
+            algo->ModReduceInternalInPlace(ctxtEnc, compositeDegree);
+            algo->ModReduceInternalInPlace(ctxtEncI, compositeDegree);
         }
+        uint32_t numIter;
+        if (cryptoParams->GetSecretKeyDist() == UNIFORM_TERNARY)
+            numIter = R_UNIFORM;
+        else
+            numIter = R_SPARSE;
+        ApplyDoubleAngleIterations(ctxtEnc, numIter);
+        ApplyDoubleAngleIterations(ctxtEncI, numIter);
 
         algo->MultByMonomialInPlace(ctxtEncI, M / 4);
         cc->EvalAddInPlace(ctxtEnc, ctxtEncI);
@@ -730,18 +789,15 @@ Ciphertext<DCRTPoly> FHECKKSRNS::EvalBootstrap(ConstCiphertext<DCRTPoly> ciphert
         ctxtEnc = cc->EvalChebyshevSeries(ctxtEnc, coefficients, coeffLowerBound, coeffUpperBound);
 
         // Double-angle iterations
-        if ((cryptoParams->GetSecretKeyDist() == UNIFORM_TERNARY) ||
-            (cryptoParams->GetSecretKeyDist() == SPARSE_TERNARY)) {
-            if (cryptoParams->GetScalingTechnique() != FIXEDMANUAL) {
-                algo->ModReduceInternalInPlace(ctxtEnc, compositeDegree);
-            }
-            uint32_t numIter;
-            if (cryptoParams->GetSecretKeyDist() == UNIFORM_TERNARY)
-                numIter = R_UNIFORM;
-            else
-                numIter = R_SPARSE;
-            ApplyDoubleAngleIterations(ctxtEnc, numIter);
+        if (cryptoParams->GetScalingTechnique() != FIXEDMANUAL) {
+            algo->ModReduceInternalInPlace(ctxtEnc, compositeDegree);
         }
+        uint32_t numIter;
+        if (cryptoParams->GetSecretKeyDist() == UNIFORM_TERNARY)
+            numIter = R_UNIFORM;
+        else
+            numIter = R_SPARSE;
+        ApplyDoubleAngleIterations(ctxtEnc, numIter);
 
         // TODO: YSP Can be extended to FLEXIBLE* scaling techniques as well as the closeness of 2^p to moduli is no longer needed
         if (cryptoParams->GetScalingTechnique() != COMPOSITESCALINGAUTO &&

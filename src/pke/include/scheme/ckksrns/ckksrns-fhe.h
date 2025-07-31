@@ -385,6 +385,8 @@ private:
     // TODO: unify this
     static constexpr uint32_t K_SPARSE     = 28;
     static constexpr uint32_t K_SPARSE_ALT = 25;
+    // corresponds to probability of less than 2^{-128}
+    static constexpr uint32_t K_SPARSE_ENCAPSULATED = 16;
 
     // upper bound for the number of overflows in the uniform secret case
     static constexpr uint32_t K_UNIFORM = 512;
@@ -393,6 +395,7 @@ private:
     // number of double-angle iterations in CKKS bootstrapping. Must be static because it is used in a static function.
     static constexpr uint32_t R_UNIFORM = 6;
     // number of double-angle iterations in CKKS bootstrapping. Must be static because it is used in a static function.
+    // same value is used for both SPARSE and ENCAPSULATED_SPARSE
     static constexpr uint32_t R_SPARSE = 3;
 
     uint32_t m_correctionFactor;  // correction factor, which we scale the message by to improve precision
@@ -402,7 +405,7 @@ private:
 
     // TODO: regenerate these as hexfloat
 
-    // Chebyshev series coefficients for the SPARSE case
+    // Chebyshev series coefficients for the SPARSE case (degree 44)
     static const inline std::vector<double> g_coefficientsSparse{
         -0.18646470117093214,   0.036680543700430925,    -0.20323558926782626,     0.029327390306199311,
         -0.24346234149506416,   0.011710240188138248,    -0.27023281815251715,     -0.017621188001030602,
@@ -416,6 +419,18 @@ private:
         4.1486274737866247e-6,  2.7079833113674568e-7,   -4.3245388569898879e-7,   -2.6482744214856919e-8,
         3.9770028771436554e-8,  2.2951153557906580e-9,   -3.2556026220554990e-9,   -1.7691071323926939e-10,
         2.5459052150406730e-10};
+
+    // Chebyshev series coefficients for the SPARSE case (degree 32)
+    static const inline std::vector<double> g_coefficientsSparseEncapsulated{
+        0.24554573401685137,    -0.047919064883347899,   0.28388702040840819,      -0.029944538735513584,
+        0.35576522619036460,    0.015106561885073030,    0.29532946674499999,      0.071203602333739374,
+        -0.10347347339668074,   0.044997590512555294,    -0.42750712431925747,     -0.090342129729094875,
+        0.36762876269324946,    0.049318066039335348,    -0.14535986272411980,     -0.015106938483063579,
+        0.035951935499240355,   0.0031036582188686437,   -0.0062644606607068463,   -0.00046609430477154916,
+        0.00082128798852385086, 0.000053910533892372678, -0.000084551549768927401, -4.9773801787288514e-6,
+        7.0466620439083618e-6,  3.7659807574103204e-7,   -4.8648510153626034e-7,   -2.3830267651437146e-8,
+        2.8329709716159918e-8,  1.2817720050334158e-9,   -1.4122220430105397e-9,   -5.9306213139085216e-11,
+        6.3298928388417848e-11};
 
     // Chebyshev series coefficients for the OPTIMIZED/uniform case
     static const inline std::vector<double> g_coefficientsUniform{

@@ -40,6 +40,12 @@
 
 #include "schemebase/base-scheme.h"
 
+#include <map>
+#include <memory>
+#include <vector>
+#include <iostream>
+#include <utility>
+
 namespace lbcrypto {
 
 // makeSparse is not used by this scheme
@@ -104,6 +110,7 @@ KeyPair<Element> MultipartyBase<Element>::MultipartyKeyGen(CryptoContext<Element
             s = Element(tug, paramsPK, Format::EVALUATION);
             break;
         case SPARSE_TERNARY:
+        case SPARSE_ENCAPSULATED:
             s = Element(tug, paramsPK, Format::EVALUATION, 192);
             break;
         default:

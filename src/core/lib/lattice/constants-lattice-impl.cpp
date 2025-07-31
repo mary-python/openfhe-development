@@ -84,7 +84,7 @@ std::ostream& operator<<(std::ostream& s, SecretKeyDist m) {
             break;
             // case BINARY:
             //     s << "BINARY";
-            break;
+            // break;
         default:
             s << "UNKNOWN";
             break;
