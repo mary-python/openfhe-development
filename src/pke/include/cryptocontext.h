@@ -37,22 +37,16 @@
 #define SRC_PKE_CRYPTOCONTEXT_H_
 
 #include "binfhecontext.h"
-
+#include "ciphertext.h"
 #include "cryptocontextfactory.h"
 #include "cryptocontext-fwd.h"
-#include "ciphertext.h"
-
 #include "encoding/plaintextfactory.h"
-
 #include "key/evalkey.h"
 #include "key/keypair.h"
-
+#include "scheme/scheme-swch-params.h"
 #include "schemebase/base-pke.h"
 #include "schemebase/base-scheme.h"
 #include "schemerns/rns-cryptoparameters.h"
-
-#include "scheme/scheme-swch-params.h"
-
 #include "utils/caller_info.h"
 #include "utils/serial.h"
 #include "utils/type_name.h"
@@ -1450,6 +1444,14 @@ public:
         GetScheme()->EvalAddInPlace(ciphertext1, ciphertext2);
     }
 
+    void EvalAddInPlaceNoCheck(Ciphertext<Element>& ctxt1, ConstCiphertext<Element>& ctxt2) const {
+        auto& cv1  = ctxt1->GetElements();
+        auto& cv2  = ctxt2->GetElements();
+        uint32_t n = cv1.size();
+        for (uint32_t i = 0; i < n; ++i)
+            cv1[i] += cv2[i];
+    }
+
     /**
     * @brief Homomorphic addition of two mutable ciphertexts.
     *
@@ -1543,26 +1545,6 @@ public:
         return EvalAddMutable(ciphertext, plaintext);
     }
 
-    // TODO (dsuponit): commented the code below to avoid compiler errors
-    // Ciphertext<Element> EvalAdd(ConstCiphertext<Element> ciphertext, const NativeInteger& scalar) const {
-    //  return GetScheme()->EvalAdd(ciphertext, scalar);
-    // }
-
-    // TODO (dsuponit): commented the code below to avoid compiler errors
-    // Ciphertext<Element> EvalAdd(const NativeInteger& scalar, ConstCiphertext<Element> ciphertext) const {
-    //  return EvalAdd(ciphertext, scalar);
-    // }
-
-    // TODO (dsuponit): commented the code below to avoid compiler errors
-    // void EvalAddInPlace(Ciphertext<Element>& ciphertext, const NativeInteger& scalar) const {
-    //  GetScheme()->EvalAddInPlace(ciphertext, scalar);
-    // }
-
-    // TODO (dsuponit): commented the code below to avoid compiler errors
-    // void EvalAddInPlace(const NativeInteger& scalar, Ciphertext<Element>& ciphertext) const {
-    //  EvalAddInPlace(ciphertext, scalar);
-    // }
-
     /**
     * @brief Homomorphic addition of a ciphertext and a real number (CKKS only).
     *
@@ -1594,13 +1576,10 @@ public:
     void EvalAddInPlace(Ciphertext<Element>& ciphertext, double scalar) const {
         if (scalar == 0.)
             return;
-
-        if (scalar > 0.) {
+        if (scalar > 0.)
             GetScheme()->EvalAddInPlace(ciphertext, scalar);
-        }
-        else {
+        else
             GetScheme()->EvalSubInPlace(ciphertext, -scalar);
-        }
     }
 
     /**
@@ -1807,7 +1786,9 @@ public:
     * @param scalar      Real number to subtract.
     */
     void EvalSubInPlace(Ciphertext<Element>& ciphertext, double scalar) const {
-        if (scalar >= 0.)
+        if (scalar == 0.)
+            return;
+        if (scalar > 0.)
             GetScheme()->EvalSubInPlace(ciphertext, scalar);
         else
             GetScheme()->EvalAddInPlace(ciphertext, -scalar);
@@ -1868,27 +1849,6 @@ public:
         EvalNegateInPlace(ciphertext);
         EvalAddInPlace(ciphertext, scalar);
     }
-
-    // TODO (dsuponit): commented the code below to avoid compiler errors
-    // Ciphertext<Element> EvalSub(ConstCiphertext<Element> ciphertext, const NativeInteger& scalar) const {
-    //  return GetScheme()->EvalSub(ciphertext, scalar);
-    // }
-
-    // TODO (dsuponit): commented the code below to avoid compiler errors
-    // Ciphertext<Element> EvalSub(const NativeInteger& scalar, ConstCiphertext<Element> ciphertext) const {
-    //  return EvalAdd(EvalNegate(ciphertext), scalar);
-    // }
-
-    // TODO (dsuponit): commented the code below to avoid compiler errors
-    //  void EvalSubInPlace(Ciphertext<Element>& ciphertext, const NativeInteger& constant) const {
-    //    GetScheme()->EvalSubInPlace(ciphertext, constant);
-    //  }
-
-    // TODO (dsuponit): commented the code below to avoid compiler errors
-    // void EvalSubInPlace(const NativeInteger& scalar, Ciphertext<Element>& ciphertext) const {
-    //  EvalNegateInPlace(ciphertext);
-    //  EvalAddInPlace(ciphertext, scalar);
-    // }
 
     //------------------------------------------------------------------------------
     // SHE MULTIPLICATION Wrapper
@@ -2019,8 +1979,48 @@ public:
     Ciphertext<Element> EvalMultNoRelin(ConstCiphertext<Element>& ciphertext1,
                                         ConstCiphertext<Element>& ciphertext2) const {
         TypeCheck(ciphertext1, ciphertext2);
-
         return GetScheme()->EvalMult(ciphertext1, ciphertext2);
+    }
+
+    Ciphertext<Element> EvalMultNoRelinNoCheck(ConstCiphertext<Element>& ctxt1, ConstCiphertext<Element>& ctxt2) const {
+        auto& cv1 = ctxt1->GetElements();
+        auto& cv2 = ctxt2->GetElements();
+
+        uint32_t n1 = cv1.size();
+        uint32_t n2 = cv2.size();
+        uint32_t nr = n1 + n2 - 1;
+
+        std::vector<DCRTPoly> cvr;
+        cvr.reserve(nr);
+
+        if (n1 == 2 && n2 == 2) {
+            cvr.emplace_back(cv1[0] * cv2[0]);
+            cvr.emplace_back((cv1[0] * cv2[1]) += (cv1[1] * cv2[0]));
+            cvr.emplace_back(cv1[1] * cv2[1]);
+        }
+        else {
+            uint32_t m = 0;
+            for (uint32_t i = 0; i < n1; ++i) {
+                auto& cv1i = cv1[i];
+                for (uint32_t j = 0, k = i; j < n2; ++j, ++k) {
+                    if (k == m) {
+                        cvr.emplace_back(cv1i * cv2[j]);
+                        ++m;
+                    }
+                    else {
+                        cvr[k] += (cv1i * cv2[j]);
+                    }
+                }
+            }
+        }
+
+        auto result = ctxt1->CloneEmpty();
+        result->SetElements(std::move(cvr));
+        result->SetNoiseScaleDeg(ctxt1->GetNoiseScaleDeg() + ctxt2->GetNoiseScaleDeg());
+        result->SetScalingFactor(ctxt1->GetScalingFactor() * ctxt2->GetScalingFactor());
+        result->SetScalingFactorInt(ctxt1->GetScalingFactorInt().ModMul(
+            ctxt2->GetScalingFactorInt(), ctxt1->GetCryptoParameters()->GetPlaintextModulus()));
+        return result;
     }
 
     /**
@@ -2079,6 +2079,15 @@ public:
         }
 
         return GetScheme()->EvalMultAndRelinearize(ciphertext1, ciphertext2, evalKeyVec);
+    }
+
+    Ciphertext<Element> EvalMultNoCheck(ConstCiphertext<Element>& ctxt, NativeInteger k) const {
+        auto result = ctxt->Clone();
+        auto& cv    = result->GetElements();
+        uint32_t n  = cv.size();
+        for (uint32_t i = 0; i < n; ++i)
+            cv[i] *= k;
+        return result;
     }
 
     /**
@@ -2433,6 +2442,7 @@ public:
     * @return Scaled ciphertext in basis Q.
     */
     Ciphertext<Element> KeySwitchDown(ConstCiphertext<Element>& ciphertext) const {
+        ValidateCiphertext(ciphertext);
         return GetScheme()->KeySwitchDown(ciphertext);
     }
 
@@ -2443,6 +2453,7 @@ public:
     * @return Scaled polynomial c0 in basis Q.
     */
     Element KeySwitchDownFirstElement(ConstCiphertext<Element>& ciphertext) const {
+        ValidateCiphertext(ciphertext);
         return GetScheme()->KeySwitchDownFirstElement(ciphertext);
     }
 
@@ -2454,6 +2465,7 @@ public:
     * @return Extended ciphertext in basis P*Q.
     */
     Ciphertext<Element> KeySwitchExt(ConstCiphertext<Element>& ciphertext, bool addFirst) const {
+        ValidateCiphertext(ciphertext);
         return GetScheme()->KeySwitchExt(ciphertext, addFirst);
     }
 
@@ -2524,7 +2536,7 @@ public:
         ValidateCiphertext(ciphertext2);
 
         auto evalKeyVec = CryptoContextImpl<Element>::GetEvalMultKeyVector(ciphertext1->GetKeyTag());
-        if (!evalKeyVec.size())
+        if (0 == evalKeyVec.size())
             OPENFHE_THROW("Evaluation key has not been generated for EvalMult");
 
         return GetScheme()->ComposedEvalMult(ciphertext1, ciphertext2, evalKeyVec[0]);
@@ -2599,9 +2611,8 @@ public:
     */
     void LevelReduceInPlace(Ciphertext<Element>& ciphertext, const EvalKey<Element> evalKey, size_t levels = 1) const {
         ValidateCiphertext(ciphertext);
-        if (levels <= 0)
-            return;
-        GetScheme()->LevelReduceInPlace(ciphertext, evalKey, levels * GetCompositeDegreeFromCtxt());
+        if (levels > 0)
+            GetScheme()->LevelReduceInPlace(ciphertext, evalKey, levels * GetCompositeDegreeFromCtxt());
     }
 
     /**
@@ -3090,7 +3101,6 @@ public:
     EvalKey<Element> ReKeyGen(const PrivateKey<Element> oldPrivateKey, const PublicKey<Element> newPublicKey) const {
         ValidateKey(oldPrivateKey);
         ValidateKey(newPublicKey);
-
         return GetScheme()->ReKeyGen(oldPrivateKey, newPublicKey);
     }
 
