@@ -1475,13 +1475,12 @@ public:
     }
 
     template <typename VectorDataType>
-    void EvalFuncBTSetup(const CryptoContextImpl<Element>& cc, uint32_t numSlots, uint32_t digitSize,
+    void EvalFuncBTSetup(const CryptoContextImpl<Element>& cc, uint32_t numSlots, const BigInteger& P,
                          const std::vector<VectorDataType>& coeffs, const std::vector<uint32_t>& dim1,
                          const std::vector<uint32_t>& levelBudget, long double scaleMod,
                          uint32_t depthLeveledComputation = 0, size_t order = 1) {
         VerifyFHEEnabled(__func__);
-        m_FHE->EvalFuncBTSetup(cc, numSlots, digitSize, coeffs, dim1, levelBudget, scaleMod, depthLeveledComputation,
-                               order);
+        m_FHE->EvalFuncBTSetup(cc, numSlots, P, coeffs, dim1, levelBudget, scaleMod, depthLeveledComputation, order);
     }
 
     template <typename VectorDataType>

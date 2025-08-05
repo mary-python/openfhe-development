@@ -126,6 +126,13 @@ public:
 using namespace std::literals::complex_literals;
 
 class FHECKKSRNS : public FHERNS {
+private:
+    // correction factor, which we scale the message by to improve precision
+    uint32_t m_correctionFactor;
+
+    // key tuple is dim1, levelBudgetEnc, levelBudgetDec
+    std::map<uint32_t, std::shared_ptr<CKKSBootstrapPrecom>> m_bootPrecomMap;
+
     using ParmType = typename DCRTPoly::Params;
     using DugType  = typename DCRTPoly::DugType;
     using DggType  = typename DCRTPoly::DggType;
@@ -150,11 +157,11 @@ public:
     Ciphertext<DCRTPoly> EvalBootstrap(ConstCiphertext<DCRTPoly> ciphertext, uint32_t numIterations,
                                        uint32_t precision) const override;
 
-    void EvalFuncBTSetup(const CryptoContextImpl<DCRTPoly>& cc, uint32_t numSlots, uint32_t digitSize,
+    void EvalFuncBTSetup(const CryptoContextImpl<DCRTPoly>& cc, uint32_t numSlots, const BigInteger& P,
                          const std::vector<std::complex<double>>& coefficients, const std::vector<uint32_t>& dim1,
                          const std::vector<uint32_t>& levelBudget, long double scaleMod,
                          uint32_t depthLeveledComputation = 0, size_t order = 1) override;
-    void EvalFuncBTSetup(const CryptoContextImpl<DCRTPoly>& cc, uint32_t numSlots, uint32_t digitSize,
+    void EvalFuncBTSetup(const CryptoContextImpl<DCRTPoly>& cc, uint32_t numSlots, const BigInteger& P,
                          const std::vector<int64_t>& coefficients, const std::vector<uint32_t>& dim1,
                          const std::vector<uint32_t>& levelBudget, long double scaleMod,
                          uint32_t depthLeveledComputation = 0, size_t order = 1) override;
@@ -274,10 +281,14 @@ public:
 
     template <typename VectorDataType>
     static uint32_t AdjustDepthFuncBT(const std::vector<VectorDataType>& coefficients, const BigInteger& PInput,
-                                      size_t order);
+                                      size_t order, SecretKeyDist skd = SPARSE_TERNARY);
 
-    // YSP Should probably be removed or moved somewhere else
-    static void TestKeySwitchSparse(PrivateKey<DCRTPoly> sk, Ciphertext<DCRTPoly> ct);
+    // generates a key going from a denser secret to a sparser one
+    static EvalKey<DCRTPoly> KeySwitchGenSparse(const PrivateKey<DCRTPoly>& oldPrivateKey,
+                                                const PrivateKey<DCRTPoly>& newPrivateKey);
+
+    // generates a key going from a denser secret to a sparser one
+    static Ciphertext<DCRTPoly> KeySwitchSparse(Ciphertext<DCRTPoly>& ciphertext, const EvalKey<DCRTPoly>& ek);
 
     std::string SerializedObjectName() const {
         return "FHECKKSRNS";
@@ -326,13 +337,6 @@ private:
     Ciphertext<DCRTPoly> Conjugate(ConstCiphertext<DCRTPoly> ciphertext,
                                    const std::map<uint32_t, EvalKey<DCRTPoly>>& evalKeys) const;
 
-    // generates a key going from a denser secret to a sparser one
-    EvalKey<DCRTPoly> KeySwitchGenSparse(const PrivateKey<DCRTPoly> oldPrivateKey,
-                                         const PrivateKey<DCRTPoly> newPrivateKey) const;
-
-    // generates a key going from a denser secret to a sparser one
-    Ciphertext<DCRTPoly> KeySwitchSparse(Ciphertext<DCRTPoly>& ciphertext, const EvalKey<DCRTPoly> ek) const;
-
     /**
    * Set modulus and recalculates the vector values to fit the modulus
    *
@@ -356,7 +360,7 @@ private:
 #endif
 
     template <typename VectorDataType>
-    void EvalFuncBTSetupInternal(const CryptoContextImpl<DCRTPoly>& cc, uint32_t numSlots, uint32_t digitSize,
+    void EvalFuncBTSetupInternal(const CryptoContextImpl<DCRTPoly>& cc, uint32_t numSlots, const BigInteger& P,
                                  const std::vector<VectorDataType>& coefficients, const std::vector<uint32_t>& dim1,
                                  const std::vector<uint32_t>& levelBudget, long double scaleMod,
                                  uint32_t depthLeveledComputation = 0, size_t order = 1);
@@ -397,11 +401,6 @@ private:
     // number of double-angle iterations in CKKS bootstrapping. Must be static because it is used in a static function.
     // same value is used for both SPARSE and ENCAPSULATED_SPARSE
     static constexpr uint32_t R_SPARSE = 3;
-
-    uint32_t m_correctionFactor;  // correction factor, which we scale the message by to improve precision
-
-    // key tuple is dim1, levelBudgetEnc, levelBudgetDec
-    std::map<uint32_t, std::shared_ptr<CKKSBootstrapPrecom>> m_bootPrecomMap;
 
     // TODO: regenerate these as hexfloat
 

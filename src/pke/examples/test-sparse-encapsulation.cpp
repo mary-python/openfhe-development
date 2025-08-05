@@ -39,8 +39,8 @@ Example for CKKS bootstrapping with full packing
 
 #include "openfhe.h"
 
-#include <vector>
 #include <iostream>
+#include <vector>
 
 using namespace lbcrypto;
 
@@ -51,14 +51,15 @@ int main(int argc, char* argv[]) {
 }
 
 void TestSparseEncapsulation() {
+    SecretKeyDist secretKeyDist  = SPARSE_TERNARY;
+    ScalingTechnique rescaleTech = FLEXIBLEAUTO;
+    uint32_t dcrtBits            = 50;
+    uint32_t firstMod            = 60;
+
     CCParams<CryptoContextCKKSRNS> parameters;
-    SecretKeyDist secretKeyDist = SPARSE_TERNARY;
     parameters.SetSecretKeyDist(secretKeyDist);
     parameters.SetSecurityLevel(HEStd_NotSet);
     parameters.SetRingDim(1 << 12);
-    ScalingTechnique rescaleTech = FLEXIBLEAUTO;
-    usint dcrtBits               = 50;
-    usint firstMod               = 60;
     parameters.SetScalingModSize(dcrtBits);
     parameters.SetScalingTechnique(rescaleTech);
     parameters.SetFirstModSize(firstMod);
@@ -66,29 +67,46 @@ void TestSparseEncapsulation() {
     std::vector<uint32_t> levelBudget = {4, 4};
 
     uint32_t levelsAvailableAfterBootstrap = 10;
-    usint depth = levelsAvailableAfterBootstrap + FHECKKSRNS::GetBootstrapDepth(levelBudget, secretKeyDist);
+    uint32_t depth = levelsAvailableAfterBootstrap + FHECKKSRNS::GetBootstrapDepth(levelBudget, secretKeyDist);
     parameters.SetMultiplicativeDepth(depth);
 
-    CryptoContext<DCRTPoly> cryptoContext = GenCryptoContext(parameters);
+    auto cc = GenCryptoContext(parameters);
+    cc->Enable(PKE);
+    cc->Enable(KEYSWITCH);
+    cc->Enable(LEVELEDSHE);
+    cc->Enable(ADVANCEDSHE);
+    cc->Enable(FHE);
 
-    cryptoContext->Enable(PKE);
-    cryptoContext->Enable(KEYSWITCH);
-    cryptoContext->Enable(LEVELEDSHE);
-    cryptoContext->Enable(ADVANCEDSHE);
-    cryptoContext->Enable(FHE);
-
-    auto keyPair = cryptoContext->KeyGen();
+    auto keyPair = cc->KeyGen();
 
     std::vector<double> x = {0.25, 0.5, 0.75, 1.0, 0.375, 0.675, 0.125, 0.925};
     size_t encodedLength  = x.size();
 
     // We start with a depleted ciphertext that has used up all of its levels.
-    Plaintext ptxt = cryptoContext->MakeCKKSPackedPlaintext(x, 1, depth - 1);
-
+    auto ptxt = cc->MakeCKKSPackedPlaintext(x, 1, depth - 1);
     ptxt->SetLength(encodedLength);
+    auto ctxt = cc->Encrypt(keyPair.publicKey, ptxt);
+
     std::cout << "Input: " << ptxt << std::endl;
 
-    Ciphertext<DCRTPoly> ciph = cryptoContext->Encrypt(keyPair.publicKey, ptxt);
+    // Test KeySwitchSparse(keyPair.secretKey, ctxt)
+    const auto cryptoParams =
+        std::dynamic_pointer_cast<CryptoParametersCKKSRNS>(keyPair.secretKey->GetCryptoParameters());
+    const auto paramsQ = cryptoParams->GetElementParams();
 
-    FHECKKSRNS::TestKeySwitchSparse(keyPair.secretKey, ciph);
+    DCRTPoly::TugType tug;
+    DCRTPoly sNew(tug, paramsQ, Format::EVALUATION, 32);
+
+    auto skNew = std::make_shared<PrivateKeyImpl<DCRTPoly>>(cc);
+    skNew->SetPrivateElement(std::move(sNew));
+
+    auto evalKey = FHECKKSRNS::KeySwitchGenSparse(keyPair.secretKey, skNew);
+
+    auto ctresult = FHECKKSRNS::KeySwitchSparse(ctxt, evalKey);
+
+    Plaintext result;
+    cc->Decrypt(skNew, ctresult, &result);
+    result->SetLength(8);
+
+    std::cout << "Result after decryption = " << result << std::endl;
 }
