@@ -57,16 +57,21 @@ void validateParametersForCryptocontext(const Params& parameters) {
             OPENFHE_THROW(
                 "NOISE_FLOODING_MULTIPARTY is not supported in CKKSRNS. Use NOISE_FLOODING_DECRYPT and EXEC_EVALUATION instead.");
         }
-        if (COMPOSITESCALINGAUTO == parameters.GetScalingTechnique() || COMPOSITESCALINGMANUAL == parameters.GetScalingTechnique()) {
-            if (COMPOSITESCALING_MAX_MODULUS_SIZE <= parameters.GetScalingModSize() || 15 > parameters.GetScalingModSize()) {
-                OPENFHE_THROW(
-                    "scalingModSize should be greater than 15 and less than " + std::to_string(COMPOSITESCALING_MAX_MODULUS_SIZE));
+        if (COMPOSITESCALINGAUTO == parameters.GetScalingTechnique() ||
+            COMPOSITESCALINGMANUAL == parameters.GetScalingTechnique()) {
+            if (COMPOSITESCALING_MAX_MODULUS_SIZE <= parameters.GetScalingModSize() ||
+                15 > parameters.GetScalingModSize()) {
+                OPENFHE_THROW("scalingModSize should be greater than 15 and less than " +
+                              std::to_string(COMPOSITESCALING_MAX_MODULUS_SIZE));
+            }
+            if (SPARSE_ENCAPSULATED == parameters.GetSecretKeyDist()) {
+                OPENFHE_THROW("SPARSE_ENCAPSULATED not yet supported with COMPOSITESCALING");
             }
         }
         else {
             if (MAX_MODULUS_SIZE <= parameters.GetScalingModSize() || 15 > parameters.GetScalingModSize()) {
-                OPENFHE_THROW(
-                    "scalingModSize should be greater than 15 and less than " + std::to_string(MAX_MODULUS_SIZE));
+                OPENFHE_THROW("scalingModSize should be greater than 15 and less than " +
+                              std::to_string(MAX_MODULUS_SIZE));
             }
         }
         if (30 != parameters.GetStatisticalSecurity()) {
@@ -92,6 +97,9 @@ void validateParametersForCryptocontext(const Params& parameters) {
         }
         if (NOISE_FLOODING_HRA == parameters.GetPREMode()) {
             OPENFHE_THROW("NOISE_FLOODING_HRA is not supported in BFVRNS");
+        }
+        if (SPARSE_ENCAPSULATED == parameters.GetSecretKeyDist()) {
+            OPENFHE_THROW("SPARSE_ENCAPSULATED not yet supported with BFVRNS");
         }
     }
     else if (isBGVRNS(scheme)) {
@@ -145,6 +153,9 @@ void validateParametersForCryptocontext(const Params& parameters) {
             if (NOISE_FLOODING_HRA != parameters.GetPREMode()) {
                 OPENFHE_THROW("numAdversarialQueries is allowed for PREMode == NOISE_FLOODING_HRA only");
             }
+        }
+        if (SPARSE_ENCAPSULATED == parameters.GetSecretKeyDist()) {
+            OPENFHE_THROW("SPARSE_ENCAPSULATED not yet supported with BGVRNS");
         }
     }
     else {
