@@ -33,17 +33,17 @@
   Unit tests for the CKKS scheme
  */
 
-#include "UnitTestUtils.h"
+#include "cryptocontext-ser.h"
+#include "gtest/gtest.h"
+#include "scheme/ckksrns/ckksrns-ser.h"
+#include "scheme/ckksrns/ckksrns-utils.h"
 #include "UnitTestCCParams.h"
 #include "UnitTestCryptoContext.h"
-#include "scheme/ckksrns/ckksrns-utils.h"
-#include "cryptocontext-ser.h"
-#include "scheme/ckksrns/ckksrns-ser.h"
+#include "UnitTestUtils.h"
 
 #include <iostream>
-#include <vector>
-#include "gtest/gtest.h"
 #include <iterator>
+#include <vector>
 
 using namespace lbcrypto;
 using namespace std::literals;
@@ -57,6 +57,7 @@ enum TEST_CASE_TYPE {
     BOOTSTRAP_ITERATIVE,
     BOOTSTRAP_NUM_TOWERS,
     BOOTSTRAP_SERIALIZE,
+    BOOTSTRAP_SPARSE_ENCAPSULATED,
 };
 
 static std::ostream& operator<<(std::ostream& os, const TEST_CASE_TYPE& type) {
@@ -83,12 +84,16 @@ static std::ostream& operator<<(std::ostream& os, const TEST_CASE_TYPE& type) {
         case BOOTSTRAP_SERIALIZE:
             typeName = "BOOTSTRAP_SERIALIZE";
             break;
+        case BOOTSTRAP_SPARSE_ENCAPSULATED:
+            typeName = "BOOTSTRAP_SPARSE_ENCAPSULATED";
+            break;
         default:
             typeName = "UNKNOWN";
             break;
     }
     return os << typeName;
 }
+
 //===========================================================================================================
 struct TEST_CASE_UTCKKSRNS_BOOT {
     TEST_CASE_TYPE testCaseType;
@@ -124,6 +129,7 @@ static auto testName = [](const testing::TestParamInfo<TEST_CASE_UTCKKSRNS_BOOT>
 static std::ostream& operator<<(std::ostream& os, const TEST_CASE_UTCKKSRNS_BOOT& test) {
     return os << test.toString();
 }
+
 //===========================================================================================================
 constexpr uint32_t MULT_DEPTH   = 25;
 constexpr uint32_t RDIM         = 64;
@@ -362,8 +368,11 @@ static std::vector<TEST_CASE_UTCKKSRNS_BOOT> testCases = {
     { BOOTSTRAP_SERIALIZE, "07", {CKKSRNS_SCHEME, RDIM, MULT_DEPTH, SMODSIZE,  DFLT,  DFLT,     UNIFORM_TERNARY, DFLT, FMODSIZE, HEStd_NotSet, HYBRID,       FIXEDAUTO, NUM_LRG_DIGS, DFLT,  DFLT,   DFLT,      DFLT, DFLT,     DFLT,    DFLT,   DFLT,  DFLT,   DFLT,      DFLT, DFLT, DFLT, COMPLEX},   { 2, 2 },  { 0, 0 },   RDIM/2 },
     { BOOTSTRAP_SERIALIZE, "08", {CKKSRNS_SCHEME, RDIM, MULT_DEPTH, SMODSIZE,  DFLT,  DFLT, SPARSE_ENCAPSULATED, DFLT, FMODSIZE, HEStd_NotSet, HYBRID,       FIXEDAUTO, NUM_LRG_DIGS, DFLT,  DFLT,   DFLT,      DFLT, DFLT,     DFLT,    DFLT,   DFLT,  DFLT,   DFLT,      DFLT, DFLT, DFLT, REAL},   { 2, 2 },  { 4, 4 },   RDIM/2 },
     // ==========================================
+    // TestType,                    Descr,          Scheme,    RDim, MultDepth, SModSize, DSize, BSize, SecKeyDist, MaxRelinSkDeg, FModSize,       SecLvl, KSTech,     ScalTech,      LDigits, PtMod,StdDev, EvalAddCt, KSCt, MultTech, EncTech, PREMode, MultipartyMode, decryptionNoiseMode, ExecutionMode, NoiseEstimate, RegisterWordSize, CompositeDegree, CKKSDataType, LvlBudget, Dim1,       Slots
+    { BOOTSTRAP_SPARSE_ENCAPSULATED, "01", {CKKSRNS_SCHEME, 1 << 12,        18,       50,  DFLT,  DFLT, SPARSE_ENCAPSULATED, DFLT,       60, HEStd_NotSet, HYBRID, FLEXIBLEAUTO, NUM_LRG_DIGS,  DFLT,  DFLT,      DFLT, DFLT,     DFLT,    DFLT,    DFLT,           DFLT,  DFLT,   DFLT,      DFLT, DFLT, DFLT, REAL},   { 4, 4 },  { 8, 8 }, 8 },
 };
 // clang-format on
+
 //===========================================================================================================
 class UTCKKSRNS_BOOT : public ::testing::TestWithParam<TEST_CASE_UTCKKSRNS_BOOT> {
     using Element = DCRTPoly;
@@ -770,6 +779,53 @@ protected:
             UNIT_TEST_HANDLE_ALL_EXCEPTIONS;
         }
     }
+
+    void UnitTest_BootstrapSE(const TEST_CASE_UTCKKSRNS_BOOT& testData, const std::string& failmsg = std::string()) {
+        try {
+            CryptoContext<Element> cc(UnitTestGenerateContext(testData.params));
+
+            auto keyPair = cc->KeyGen();
+
+            auto cryptoParams =
+                std::dynamic_pointer_cast<CryptoParametersCKKSRNS>(keyPair.secretKey->GetCryptoParameters());
+
+            std::vector<double> x = {0.25, 0.5, 0.75, 1.0, 0.375, 0.675, 0.125, 0.925};
+            size_t encodedLength  = x.size();
+
+            // We start with a depleted ciphertext that has used up all of its levels.
+            auto depth = cryptoParams->GetMultiplicativeDepth();
+            auto ptxt  = cc->MakeCKKSPackedPlaintext(x, 1, depth - 1);
+            ptxt->SetLength(encodedLength);
+            auto ctxt = cc->Encrypt(keyPair.publicKey, ptxt);
+
+            // Test KeySwitchSparse(keyPair.secretKey, ctxt)
+            const auto paramsQ = cryptoParams->GetElementParams();
+
+            DCRTPoly::TugType tug;
+            DCRTPoly sNew(tug, paramsQ, Format::EVALUATION, 32);
+
+            auto skNew = std::make_shared<PrivateKeyImpl<DCRTPoly>>(cc);
+            skNew->SetPrivateElement(std::move(sNew));
+
+            auto evalKey = FHECKKSRNS::KeySwitchGenSparse(keyPair.secretKey, skNew);
+
+            auto ctresult = FHECKKSRNS::KeySwitchSparse(ctxt, evalKey);
+
+            Plaintext result;
+            cc->Decrypt(skNew, ctresult, &result);
+            result->SetLength(8);
+
+            checkEquality(ptxt->GetCKKSPackedValue(), result->GetCKKSPackedValue(), eps,
+                          failmsg + " input/output missmatch");
+        }
+        catch (std::exception& e) {
+            std::cerr << "Exception thrown from " << __func__ << "(): " << e.what() << std::endl;
+            EXPECT_TRUE(0 == 1) << failmsg;
+        }
+        catch (...) {
+            UNIT_TEST_HANDLE_ALL_EXCEPTIONS;
+        }
+    }
 };
 
 //===========================================================================================================
@@ -794,6 +850,9 @@ TEST_P(UTCKKSRNS_BOOT, CKKSRNS) {
             break;
         case BOOTSTRAP_SERIALIZE:
             UnitTest_Bootstrap_Serialize(test, test.buildTestName());
+            break;
+        case BOOTSTRAP_SPARSE_ENCAPSULATED:
+            UnitTest_BootstrapSE(test, test.buildTestName());
             break;
         default:
             break;
