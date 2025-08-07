@@ -126,10 +126,10 @@ bool TestB6     = false;
 bool TestNative = true;
 
 inline const std::string& GetMathBackendParameters() {
-    static std::string id = "Backend " + std::to_string(MATHBACKEND) +
+    static std::string id = std::to_string(MATHBACKEND) +
 #ifdef WITH_BE2
-                            (MATHBACKEND == 2 ? " internal int size " + std::to_string(sizeof(integral_dtype) * 8) +
-                                                    " BitLength " + std::to_string(BigIntegerBitLength) :
+                            (MATHBACKEND == 2 ? " (Internal Int Size " + std::to_string(sizeof(integral_dtype) * 8) +
+                                                    ", Bit Length " + std::to_string(BigIntegerBitLength) + ")" :
                                                 "") +
 #endif
                             "";
@@ -195,8 +195,8 @@ int main(int argc, char** argv) {
         listeners.Append(new MinimalistPrinter);
     }
     else {
-        cout << "OpenFHE Version " << GetOPENFHEVersion() << endl;
-        cout << "Default Backend " << GetMathBackendParameters() << endl;
+        cout << "OpenFHE Version: " << GetOPENFHEVersion() << endl;
+        cout << "Default Backend: " << GetMathBackendParameters() << endl;
     }
 
     std::cout << "Testing Backends: " << (TestB2 ? "2 " : "") << (TestB4 ? "4 " : "") << (TestB6 ? "6 " : "")

@@ -45,8 +45,9 @@
 
 #include <chrono>
 #include <complex>
-#include <ostream>
 #include <iterator>
+#include <numeric>
+#include <ostream>
 #include <vector>
 
 // Define BENCH below to enable more fine-grained benchmarking
@@ -103,6 +104,7 @@ struct TEST_CASE_FUNCBT {
     uint32_t dnum;
     uint32_t levelsComputation;
     std::vector<uint32_t> lvlb;
+    SecretKeyDist skd;
 
     std::string buildTestName() const {
         std::stringstream ss;
@@ -144,53 +146,101 @@ static std::vector<TEST_CASE_FUNCBT> testCases = {
 // Functional Bootstrapping does not support NATIVE_SIZE == 128
 // For higher precision, consider using composite scaling instead
 #if NATIVEINT != 128
-    //    TestCaseType, Desc,      QBFVInit,    PInput, POutput,           Q,      Bigq, scaleTHI, scaleStepTHI, order, numSlots, ringDim, lvlsAfterBoot, lvlsBeforeBoot, dnum, lvlsComp, levelBudget
-    {    FUNCBT_ARBLUT, "01",      QBFVINIT,         2,       2,   1UL << 33, 1UL << 33,        1, SCALESTEPTHI,     1,  1 << 15, 1 << 15,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP, {3, 3} },
-    {    FUNCBT_ARBLUT, "02",      QBFVINIT,         2,       2,   1UL << 33, 1UL << 33,        1, SCALESTEPTHI,     2,  1 << 15, 1 << 15,     AFTERBOOT,     BEFOREBOOT,    7, LVLSCOMP, {3, 3} },
-    {    FUNCBT_ARBLUT, "03",      QBFVINIT,         2,       2,   1UL << 33, 1UL << 33,        1, SCALESTEPTHI,     3,  1 << 15, 1 << 15,     AFTERBOOT,     BEFOREBOOT,    7, LVLSCOMP, {3, 3} },
-    {    FUNCBT_ARBLUT, "04",      QBFVINIT,         4,       4,   1UL << 35, 1UL << 35,       16, SCALESTEPTHI,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP, {4, 4} },
-    {    FUNCBT_ARBLUT, "05",      QBFVINIT,         4,       4,   1UL << 35, 1UL << 35,       16, SCALESTEPTHI,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP, {4, 4} },
-    {    FUNCBT_ARBLUT, "06",      QBFVINIT,         4,       4,   1UL << 35, 1UL << 35,       16, SCALESTEPTHI,     3,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP, {4, 4} },
-    {    FUNCBT_ARBLUT, "07",      QBFVINIT,         8,       8,   1UL << 37, 1UL << 37,       16, SCALESTEPTHI,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP, {4, 4} },
-    {    FUNCBT_ARBLUT, "08",      QBFVINIT,         8,       8,   1UL << 37, 1UL << 37,       16, SCALESTEPTHI,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP, {4, 4} },
-    {    FUNCBT_ARBLUT, "09",      QBFVINIT,         8,       8,   1UL << 37, 1UL << 37,       16, SCALESTEPTHI,     3,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP, {4, 4} },
-    {    FUNCBT_ARBLUT, "10",      QBFVINIT,        16,      16,   1UL << 38, 1UL << 38,       32, SCALESTEPTHI,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP, {4, 4} },
-    {    FUNCBT_ARBLUT, "11",      QBFVINIT,        16,      16,   1UL << 38, 1UL << 38,       32, SCALESTEPTHI,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP, {4, 4} },
-    {    FUNCBT_ARBLUT, "12",      QBFVINIT,        16,      16,   1UL << 38, 1UL << 38,       32, SCALESTEPTHI,     3,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP, {4, 4} },
-    {    FUNCBT_ARBLUT, "13",      QBFVINIT,    PINPUT, POUTPUT,       QDFLT,     QDFLT, SCALETHI, SCALESTEPTHI,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    4, LVLSCOMP, {3, 3} },
-    {    FUNCBT_ARBLUT, "14",      QBFVINIT,    PINPUT, POUTPUT,       QDFLT,     QDFLT, SCALETHI, SCALESTEPTHI,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    4, LVLSCOMP, {3, 3} },
-    {    FUNCBT_ARBLUT, "15",      QBFVINIT,    PINPUT, POUTPUT,       QDFLT,     QDFLT, SCALETHI, SCALESTEPTHI,     3,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    5, LVLSCOMP, {3, 3} },
-    {    FUNCBT_ARBLUT, "16",      QBFVINIT,       512,     512,   1UL << 48, 1UL << 48,       45, SCALESTEPTHI,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    5, LVLSCOMP, {3, 3} },
-    {    FUNCBT_ARBLUT, "17",      QBFVINIT,       512,     512,   1UL << 48, 1UL << 48,       45, SCALESTEPTHI,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    5, LVLSCOMP, {3, 3} },
-    {    FUNCBT_ARBLUT, "18",      QBFVINIT,       512,     512,   1UL << 48, 1UL << 48,       45, SCALESTEPTHI,     3,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    7, LVLSCOMP, {3, 3} },
-    {    FUNCBT_ARBLUT, "19", QBFVINITLARGE,      4096,    4096,   1UL << 55, 1UL << 55,     2000, SCALESTEPTHI,     1,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP, {4, 4} },
-    {    FUNCBT_ARBLUT, "20", QBFVINITLARGE,      4096,    4096,   1UL << 55, 1UL << 55,     2000, SCALESTEPTHI,     2,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP, {4, 4} },
-    {    FUNCBT_ARBLUT, "21", QBFVINITLARGE,      4096,    4096,   1UL << 55, 1UL << 55,     2000, SCALESTEPTHI,     3,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP, {4, 4} },
-    {    FUNCBT_ARBLUT, "22", QBFVINITLARGE,     16382,   16382,   1UL << 58, 1UL << 58,     8000, SCALESTEPTHI,     1,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP, {4, 4} },
-    {    FUNCBT_ARBLUT, "23", QBFVINITLARGE,     16382,   16382,   1UL << 58, 1UL << 58,     8000, SCALESTEPTHI,     2,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP, {4, 4} },
-    {    FUNCBT_ARBLUT, "24", QBFVINITLARGE,     16382,   16382,   1UL << 58, 1UL << 58,     8000, SCALESTEPTHI,     3,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP, {4, 4} },
-    { FUNCBT_SIGNDIGIT, "25",      QBFVINIT,      4096,       2,   1UL << 46, 1UL << 35,        1,            1,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP, {4, 4} },
-    { FUNCBT_SIGNDIGIT, "26",      QBFVINIT,      4096,       2,   1UL << 46, 1UL << 35,        1,            1,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP, {4, 4} },  // not needed for benchmark
-    { FUNCBT_SIGNDIGIT, "27",      QBFVINIT,      4096,       4,   1UL << 45, 1UL << 35,       10,            2,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP, {4, 4} },
-    { FUNCBT_SIGNDIGIT, "28",      QBFVINIT,      4096,       4,   1UL << 45, 1UL << 35,       10,            2,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP, {4, 4} },  // not needed for benchmark
-    { FUNCBT_SIGNDIGIT, "29",      QBFVINIT,      4096,       8,   1UL << 46, 1UL << 37,       16,            4,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP, {4, 4} },
-    { FUNCBT_SIGNDIGIT, "30",      QBFVINIT,      4096,       8,   1UL << 46, 1UL << 37,       16,            4,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP, {4, 4} },  // not needed for benchmark
-    { FUNCBT_SIGNDIGIT, "31",      QBFVINIT,      4096,      16,   1UL << 48, 1UL << 40,       32,            8,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP, {4, 4} },
-    { FUNCBT_SIGNDIGIT, "32",      QBFVINIT,      4096,      16,   1UL << 48, 1UL << 40,       32,            8,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP, {4, 4} },  // not needed for benchmark
-    { FUNCBT_SIGNDIGIT, "33",      QBFVINIT,      4096,      64,   1UL << 48, 1UL << 42,      128,           32,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP, {4, 4} },
-    { FUNCBT_SIGNDIGIT, "34",      QBFVINIT,      4096,      64,   1UL << 48, 1UL << 42,      128,           32,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP, {4, 4} },  // not needed for benchmark
-    { FUNCBT_SIGNDIGIT, "35",   QBFVINITMED, 1UL << 21,       2,   1UL << 56, 1UL << 36,        1,            1,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP, {4, 4} },
-    { FUNCBT_SIGNDIGIT, "36",   QBFVINITMED, 1UL << 21,       2,   1UL << 55, 1UL << 35,        1,            1,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP, {4, 4} },  // not needed for benchmark
-    { FUNCBT_SIGNDIGIT, "37",   QBFVINITMED, 1UL << 21,       8,   1UL << 55, 1UL << 37,       16,            4,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP, {4, 4} },
-    { FUNCBT_SIGNDIGIT, "38",   QBFVINITMED, 1UL << 21,       8,   1UL << 55, 1UL << 37,       16,            4,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP, {4, 4} },  // not needed for benchmark
-    { FUNCBT_SIGNDIGIT, "39",   QBFVINITMED, 1UL << 21,     128,   1UL << 57, 1UL << 43,      256,           16,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP, {4, 4} },
-    { FUNCBT_SIGNDIGIT, "40",   QBFVINITMED, 1UL << 21,     128,   1UL << 57, 1UL << 43,      256,           16,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP, {4, 4} },  // not needed for benchmark
-    { FUNCBT_SIGNDIGIT, "41", QBFVINITLARGE, 1UL << 32,     256, QBFVINITMED, 1UL << 47,      256,           16,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    4, LVLSCOMP, {3, 3} },
-    { FUNCBT_SIGNDIGIT, "42", QBFVINITLARGE, 1UL << 32,     256, QBFVINITMED, 1UL << 47,      256,           16,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    4, LVLSCOMP, {3, 3} },  // not needed for benchmark
-    { FUNCBT_CONSECLEV, "43",      QBFVINIT,         2,       2,   1UL << 35, 1UL << 35,        1, SCALESTEPTHI,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3,        1, {3, 3} },  // not needed for benchmark
-    { FUNCBT_CONSECLEV, "44",      QBFVINIT,    PINPUT,  PINPUT,   1UL << 48, 1UL << 48, SCALETHI, SCALESTEPTHI,     1,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3,        1, {3, 3} },  // not needed for benchmark
-    {       FUNCBT_MVB, "45",      QBFVINIT,         2,       2,   1UL << 35, 1UL << 35,        1, SCALESTEPTHI,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3,        1, {3, 3} },  // not needed for benchmark
-    {       FUNCBT_MVB, "46",      QBFVINIT,    PINPUT,  PINPUT,   1UL << 48, 1UL << 48, SCALETHI, SCALESTEPTHI,     1,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3,        1, {3, 3} },  // not needed for benchmark
+    //    TestCaseType, Desc,      QBFVInit,    PInput, POutput,           Q,      Bigq, scaleTHI, scaleStepTHI, order, numSlots, ringDim, lvlsAfterBoot, lvlsBeforeBoot, dnum, lvlsComp, lvlBudget, SecretKeyDist
+    {    FUNCBT_ARBLUT, "01",      QBFVINIT,         2,       2,   1UL << 33, 1UL << 33,        1, SCALESTEPTHI,     1,  1 << 15, 1 << 15,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {3, 3}, SPARSE_TERNARY},
+    {    FUNCBT_ARBLUT, "02",      QBFVINIT,         2,       2,   1UL << 33, 1UL << 33,        1, SCALESTEPTHI,     2,  1 << 15, 1 << 15,     AFTERBOOT,     BEFOREBOOT,    7, LVLSCOMP,    {3, 3}, SPARSE_TERNARY},
+    {    FUNCBT_ARBLUT, "03",      QBFVINIT,         2,       2,   1UL << 33, 1UL << 33,        1, SCALESTEPTHI,     3,  1 << 15, 1 << 15,     AFTERBOOT,     BEFOREBOOT,    7, LVLSCOMP,    {3, 3}, SPARSE_TERNARY},
+    {    FUNCBT_ARBLUT, "04",      QBFVINIT,         4,       4,   1UL << 35, 1UL << 35,       16, SCALESTEPTHI,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
+    {    FUNCBT_ARBLUT, "05",      QBFVINIT,         4,       4,   1UL << 35, 1UL << 35,       16, SCALESTEPTHI,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
+    {    FUNCBT_ARBLUT, "06",      QBFVINIT,         4,       4,   1UL << 35, 1UL << 35,       16, SCALESTEPTHI,     3,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
+    {    FUNCBT_ARBLUT, "07",      QBFVINIT,         8,       8,   1UL << 37, 1UL << 37,       16, SCALESTEPTHI,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
+    {    FUNCBT_ARBLUT, "08",      QBFVINIT,         8,       8,   1UL << 37, 1UL << 37,       16, SCALESTEPTHI,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
+    {    FUNCBT_ARBLUT, "09",      QBFVINIT,         8,       8,   1UL << 37, 1UL << 37,       16, SCALESTEPTHI,     3,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
+    {    FUNCBT_ARBLUT, "10",      QBFVINIT,        16,      16,   1UL << 38, 1UL << 38,       32, SCALESTEPTHI,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
+    {    FUNCBT_ARBLUT, "11",      QBFVINIT,        16,      16,   1UL << 38, 1UL << 38,       32, SCALESTEPTHI,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
+    {    FUNCBT_ARBLUT, "12",      QBFVINIT,        16,      16,   1UL << 38, 1UL << 38,       32, SCALESTEPTHI,     3,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
+    {    FUNCBT_ARBLUT, "13",      QBFVINIT,    PINPUT, POUTPUT,       QDFLT,     QDFLT, SCALETHI, SCALESTEPTHI,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    4, LVLSCOMP,    {3, 3}, SPARSE_TERNARY},
+    {    FUNCBT_ARBLUT, "14",      QBFVINIT,    PINPUT, POUTPUT,       QDFLT,     QDFLT, SCALETHI, SCALESTEPTHI,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    4, LVLSCOMP,    {3, 3}, SPARSE_TERNARY},
+    {    FUNCBT_ARBLUT, "15",      QBFVINIT,    PINPUT, POUTPUT,       QDFLT,     QDFLT, SCALETHI, SCALESTEPTHI,     3,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    5, LVLSCOMP,    {3, 3}, SPARSE_TERNARY},
+    {    FUNCBT_ARBLUT, "16",      QBFVINIT,       512,     512,   1UL << 48, 1UL << 48,       45, SCALESTEPTHI,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    5, LVLSCOMP,    {3, 3}, SPARSE_TERNARY},
+    {    FUNCBT_ARBLUT, "17",      QBFVINIT,       512,     512,   1UL << 48, 1UL << 48,       45, SCALESTEPTHI,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    5, LVLSCOMP,    {3, 3}, SPARSE_TERNARY},
+    {    FUNCBT_ARBLUT, "18",      QBFVINIT,       512,     512,   1UL << 48, 1UL << 48,       45, SCALESTEPTHI,     3,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    7, LVLSCOMP,    {3, 3}, SPARSE_TERNARY},
+    {    FUNCBT_ARBLUT, "19", QBFVINITLARGE,      4096,    4096,   1UL << 55, 1UL << 55,     2000, SCALESTEPTHI,     1,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
+    {    FUNCBT_ARBLUT, "20", QBFVINITLARGE,      4096,    4096,   1UL << 55, 1UL << 55,     2000, SCALESTEPTHI,     2,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
+    {    FUNCBT_ARBLUT, "21", QBFVINITLARGE,      4096,    4096,   1UL << 55, 1UL << 55,     2000, SCALESTEPTHI,     3,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
+    {    FUNCBT_ARBLUT, "22", QBFVINITLARGE,     16384,   16384,   1UL << 58, 1UL << 58,     8000, SCALESTEPTHI,     1,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
+    {    FUNCBT_ARBLUT, "23", QBFVINITLARGE,     16384,   16384,   1UL << 58, 1UL << 58,     8000, SCALESTEPTHI,     2,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
+    {    FUNCBT_ARBLUT, "24", QBFVINITLARGE,     16384,   16384,   1UL << 58, 1UL << 58,     8000, SCALESTEPTHI,     3,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
+    { FUNCBT_SIGNDIGIT, "25",      QBFVINIT,      4096,       2,   1UL << 46, 1UL << 35,        1,            1,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
+    { FUNCBT_SIGNDIGIT, "26",      QBFVINIT,      4096,       2,   1UL << 46, 1UL << 35,        1,            1,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},  // not needed for benchmark
+    { FUNCBT_SIGNDIGIT, "27",      QBFVINIT,      4096,       4,   1UL << 45, 1UL << 35,       10,            2,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
+    { FUNCBT_SIGNDIGIT, "28",      QBFVINIT,      4096,       4,   1UL << 45, 1UL << 35,       10,            2,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},  // not needed for benchmark
+    { FUNCBT_SIGNDIGIT, "29",      QBFVINIT,      4096,       8,   1UL << 46, 1UL << 37,       16,            4,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
+    { FUNCBT_SIGNDIGIT, "30",      QBFVINIT,      4096,       8,   1UL << 46, 1UL << 37,       16,            4,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},  // not needed for benchmark
+    { FUNCBT_SIGNDIGIT, "31",      QBFVINIT,      4096,      16,   1UL << 48, 1UL << 40,       32,            8,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
+    { FUNCBT_SIGNDIGIT, "32",      QBFVINIT,      4096,      16,   1UL << 48, 1UL << 40,       32,            8,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},  // not needed for benchmark
+    { FUNCBT_SIGNDIGIT, "33",      QBFVINIT,      4096,      64,   1UL << 48, 1UL << 42,      128,           32,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
+    { FUNCBT_SIGNDIGIT, "34",      QBFVINIT,      4096,      64,   1UL << 48, 1UL << 42,      128,           32,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},  // not needed for benchmark
+    { FUNCBT_SIGNDIGIT, "35",   QBFVINITMED, 1UL << 21,       2,   1UL << 56, 1UL << 36,        1,            1,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
+    { FUNCBT_SIGNDIGIT, "36",   QBFVINITMED, 1UL << 21,       2,   1UL << 55, 1UL << 35,        1,            1,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},  // not needed for benchmark
+    { FUNCBT_SIGNDIGIT, "37",   QBFVINITMED, 1UL << 21,       8,   1UL << 55, 1UL << 37,       16,            4,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
+    { FUNCBT_SIGNDIGIT, "38",   QBFVINITMED, 1UL << 21,       8,   1UL << 55, 1UL << 37,       16,            4,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},  // not needed for benchmark
+    { FUNCBT_SIGNDIGIT, "39",   QBFVINITMED, 1UL << 21,     128,   1UL << 57, 1UL << 43,      256,           16,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
+    { FUNCBT_SIGNDIGIT, "40",   QBFVINITMED, 1UL << 21,     128,   1UL << 57, 1UL << 43,      256,           16,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},  // not needed for benchmark
+    { FUNCBT_SIGNDIGIT, "41", QBFVINITLARGE, 1UL << 32,     256, QBFVINITMED, 1UL << 47,      256,           16,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    4, LVLSCOMP,    {3, 3}, SPARSE_TERNARY},
+    { FUNCBT_SIGNDIGIT, "42", QBFVINITLARGE, 1UL << 32,     256, QBFVINITMED, 1UL << 47,      256,           16,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    4, LVLSCOMP,    {3, 3}, SPARSE_TERNARY},  // not needed for benchmark
+    { FUNCBT_CONSECLEV, "43",      QBFVINIT,         2,       2,   1UL << 35, 1UL << 35,        1, SCALESTEPTHI,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3,        1,    {3, 3}, SPARSE_TERNARY},  // not needed for benchmark
+    { FUNCBT_CONSECLEV, "44",      QBFVINIT,    PINPUT,  PINPUT,   1UL << 48, 1UL << 48, SCALETHI, SCALESTEPTHI,     1,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3,        1,    {3, 3}, SPARSE_TERNARY},  // not needed for benchmark
+    {       FUNCBT_MVB, "45",      QBFVINIT,         2,       2,   1UL << 35, 1UL << 35,        1, SCALESTEPTHI,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3,        1,    {3, 3}, SPARSE_TERNARY},  // not needed for benchmark
+    {       FUNCBT_MVB, "46",      QBFVINIT,    PINPUT,  PINPUT,   1UL << 48, 1UL << 48, SCALETHI, SCALESTEPTHI,     1,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3,        1,    {3, 3}, SPARSE_TERNARY},  // not needed for benchmark
+
+    // These are temporary
+    {    FUNCBT_ARBLUT, "101",      QBFVINIT,         2,       2,   1UL << 33, 1UL << 33,        1, SCALESTEPTHI,     1,  1 << 15, 1 << 15,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {3, 3}, SPARSE_ENCAPSULATED},
+    {    FUNCBT_ARBLUT, "102",      QBFVINIT,         2,       2,   1UL << 33, 1UL << 33,        1, SCALESTEPTHI,     2,  1 << 15, 1 << 15,     AFTERBOOT,     BEFOREBOOT,    7, LVLSCOMP,    {3, 3}, SPARSE_ENCAPSULATED},
+    {    FUNCBT_ARBLUT, "103",      QBFVINIT,         2,       2,   1UL << 33, 1UL << 33,        1, SCALESTEPTHI,     3,  1 << 15, 1 << 15,     AFTERBOOT,     BEFOREBOOT,    7, LVLSCOMP,    {3, 3}, SPARSE_ENCAPSULATED},
+    {    FUNCBT_ARBLUT, "104",      QBFVINIT,         4,       4,   1UL << 35, 1UL << 35,       16, SCALESTEPTHI,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
+    {    FUNCBT_ARBLUT, "105",      QBFVINIT,         4,       4,   1UL << 35, 1UL << 35,       16, SCALESTEPTHI,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
+    {    FUNCBT_ARBLUT, "106",      QBFVINIT,         4,       4,   1UL << 35, 1UL << 35,       16, SCALESTEPTHI,     3,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
+    {    FUNCBT_ARBLUT, "107",      QBFVINIT,         8,       8,   1UL << 37, 1UL << 37,       16, SCALESTEPTHI,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
+    {    FUNCBT_ARBLUT, "108",      QBFVINIT,         8,       8,   1UL << 37, 1UL << 37,       16, SCALESTEPTHI,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
+    {    FUNCBT_ARBLUT, "109",      QBFVINIT,         8,       8,   1UL << 37, 1UL << 37,       16, SCALESTEPTHI,     3,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
+    {    FUNCBT_ARBLUT, "110",      QBFVINIT,        16,      16,   1UL << 38, 1UL << 38,       32, SCALESTEPTHI,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
+    {    FUNCBT_ARBLUT, "111",      QBFVINIT,        16,      16,   1UL << 38, 1UL << 38,       32, SCALESTEPTHI,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
+    {    FUNCBT_ARBLUT, "112",      QBFVINIT,        16,      16,   1UL << 38, 1UL << 38,       32, SCALESTEPTHI,     3,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
+    {    FUNCBT_ARBLUT, "113",      QBFVINIT,    PINPUT, POUTPUT,       QDFLT,     QDFLT, SCALETHI, SCALESTEPTHI,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    4, LVLSCOMP,    {3, 3}, SPARSE_ENCAPSULATED},
+    {    FUNCBT_ARBLUT, "114",      QBFVINIT,    PINPUT, POUTPUT,       QDFLT,     QDFLT, SCALETHI, SCALESTEPTHI,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    4, LVLSCOMP,    {3, 3}, SPARSE_ENCAPSULATED},
+    {    FUNCBT_ARBLUT, "115",      QBFVINIT,    PINPUT, POUTPUT,       QDFLT,     QDFLT, SCALETHI, SCALESTEPTHI,     3,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    5, LVLSCOMP,    {3, 3}, SPARSE_ENCAPSULATED},
+    {    FUNCBT_ARBLUT, "116",      QBFVINIT,       512,     512,   1UL << 48, 1UL << 48,       45, SCALESTEPTHI,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    5, LVLSCOMP,    {3, 3}, SPARSE_ENCAPSULATED},
+    {    FUNCBT_ARBLUT, "117",      QBFVINIT,       512,     512,   1UL << 48, 1UL << 48,       45, SCALESTEPTHI,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    5, LVLSCOMP,    {3, 3}, SPARSE_ENCAPSULATED},
+    {    FUNCBT_ARBLUT, "118",      QBFVINIT,       512,     512,   1UL << 48, 1UL << 48,       45, SCALESTEPTHI,     3,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    7, LVLSCOMP,    {3, 3}, SPARSE_ENCAPSULATED},
+    {    FUNCBT_ARBLUT, "119", QBFVINITLARGE,      4096,    4096,   1UL << 55, 1UL << 55,     2000, SCALESTEPTHI,     1,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
+    {    FUNCBT_ARBLUT, "120", QBFVINITLARGE,      4096,    4096,   1UL << 55, 1UL << 55,     2000, SCALESTEPTHI,     2,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
+    {    FUNCBT_ARBLUT, "121", QBFVINITLARGE,      4096,    4096,   1UL << 55, 1UL << 55,     2000, SCALESTEPTHI,     3,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
+    {    FUNCBT_ARBLUT, "122", QBFVINITLARGE,     16384,   16384,   1UL << 59, 1UL << 59,     8000, SCALESTEPTHI,     1,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
+    {    FUNCBT_ARBLUT, "123", QBFVINITLARGE,     16384,   16384,   1UL << 59, 1UL << 59,     8000, SCALESTEPTHI,     2,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
+    {    FUNCBT_ARBLUT, "124", QBFVINITLARGE,     16384,   16384,   1UL << 59, 1UL << 59,     8000, SCALESTEPTHI,     3,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
+    { FUNCBT_SIGNDIGIT, "125",      QBFVINIT,      4096,       2,   1UL << 46, 1UL << 35,        1,            1,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
+    { FUNCBT_SIGNDIGIT, "126",      QBFVINIT,      4096,       2,   1UL << 46, 1UL << 35,        1,            1,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},  // not needed for benchmark
+    { FUNCBT_SIGNDIGIT, "127",      QBFVINIT,      4096,       4,   1UL << 45, 1UL << 35,       10,            2,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
+    { FUNCBT_SIGNDIGIT, "128",      QBFVINIT,      4096,       4,   1UL << 45, 1UL << 35,       10,            2,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},  // not needed for benchmark
+    { FUNCBT_SIGNDIGIT, "129",      QBFVINIT,      4096,       8,   1UL << 46, 1UL << 37,       16,            4,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
+    { FUNCBT_SIGNDIGIT, "130",      QBFVINIT,      4096,       8,   1UL << 46, 1UL << 37,       16,            4,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},  // not needed for benchmark
+    { FUNCBT_SIGNDIGIT, "131",      QBFVINIT,      4096,      16,   1UL << 48, 1UL << 40,       32,            8,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
+    { FUNCBT_SIGNDIGIT, "132",      QBFVINIT,      4096,      16,   1UL << 48, 1UL << 40,       32,            8,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},  // not needed for benchmark
+    { FUNCBT_SIGNDIGIT, "133",      QBFVINIT,      4096,      64,   1UL << 48, 1UL << 42,      128,           32,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
+    { FUNCBT_SIGNDIGIT, "134",      QBFVINIT,      4096,      64,   1UL << 48, 1UL << 42,      128,           32,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},  // not needed for benchmark
+    { FUNCBT_SIGNDIGIT, "135",   QBFVINITMED, 1UL << 21,       2,   1UL << 56, 1UL << 36,        1,            1,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
+    { FUNCBT_SIGNDIGIT, "136",   QBFVINITMED, 1UL << 21,       2,   1UL << 55, 1UL << 35,        1,            1,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},  // not needed for benchmark
+    { FUNCBT_SIGNDIGIT, "137",   QBFVINITMED, 1UL << 21,       8,   1UL << 55, 1UL << 37,       16,            4,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
+    { FUNCBT_SIGNDIGIT, "138",   QBFVINITMED, 1UL << 21,       8,   1UL << 55, 1UL << 37,       16,            4,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},  // not needed for benchmark
+    { FUNCBT_SIGNDIGIT, "139",   QBFVINITMED, 1UL << 21,     128,   1UL << 57, 1UL << 43,      256,           16,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
+    { FUNCBT_SIGNDIGIT, "140",   QBFVINITMED, 1UL << 21,     128,   1UL << 57, 1UL << 43,      256,           16,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},  // not needed for benchmark
+    { FUNCBT_SIGNDIGIT, "141", QBFVINITLARGE, 1UL << 32,     256, QBFVINITMED, 1UL << 47,      256,           16,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    4, LVLSCOMP,    {3, 3}, SPARSE_ENCAPSULATED},
+    { FUNCBT_SIGNDIGIT, "142", QBFVINITLARGE, 1UL << 32,     256, QBFVINITMED, 1UL << 47,      256,           16,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    4, LVLSCOMP,    {3, 3}, SPARSE_ENCAPSULATED},  // not needed for benchmark
+    { FUNCBT_CONSECLEV, "143",      QBFVINIT,         2,       2,   1UL << 35, 1UL << 35,        1, SCALESTEPTHI,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3,        1,    {3, 3}, SPARSE_ENCAPSULATED},  // not needed for benchmark
+    { FUNCBT_CONSECLEV, "144",      QBFVINIT,    PINPUT,  PINPUT,   1UL << 48, 1UL << 48, SCALETHI, SCALESTEPTHI,     1,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3,        1,    {3, 3}, SPARSE_ENCAPSULATED},  // not needed for benchmark
+    {       FUNCBT_MVB, "145",      QBFVINIT,         2,       2,   1UL << 35, 1UL << 35,        1, SCALESTEPTHI,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3,        1,    {3, 3}, SPARSE_ENCAPSULATED},  // not needed for benchmark
+    {       FUNCBT_MVB, "146",      QBFVINIT,    PINPUT,  PINPUT,   1UL << 48, 1UL << 48, SCALETHI, SCALESTEPTHI,     1,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3,        1,    {3, 3}, SPARSE_ENCAPSULATED},  // not needed for benchmark
 #endif
 };
 // clang-format on
@@ -214,7 +264,7 @@ protected:
             t.lvlb     = LVLBDFLT;
 #endif
             bool flagSP = (t.numSlots <= t.ringDim / 2);  // sparse packing
-            // t.numSlots represents the number of values to be encrypted in BFV. If this number is the same as the ring dimension, then the CKKS slots is half.
+            // t.numSlots represents number of values to be encrypted in BFV. If same as ring dimension, CKKS slots is halved.
             auto numSlotsCKKS = flagSP ? t.numSlots : t.numSlots / 2;
 
             auto a = t.PInput.ConvertToInt<int64_t>();
@@ -247,7 +297,7 @@ protected:
             uint32_t dcrtBits = t.Bigq.GetMSB() - 1;
             uint32_t firstMod = t.Bigq.GetMSB() - 1;
             CCParams<CryptoContextCKKSRNS> parameters;
-            parameters.SetSecretKeyDist(SPARSE_TERNARY);
+            parameters.SetSecretKeyDist(t.skd);
             parameters.SetSecurityLevel(HEStd_NotSet);
             parameters.SetScalingModSize(dcrtBits);
             parameters.SetScalingTechnique(FIXEDMANUAL);
@@ -258,9 +308,9 @@ protected:
             uint32_t depth = t.levelsAvailableAfterBootstrap + t.lvlb[0] + t.lvlb[1] + 2;
 
             if (binaryLUT)
-                depth += FHECKKSRNS::AdjustDepthFuncBT(coeffint, t.PInput, t.order);
+                depth += FHECKKSRNS::AdjustDepthFuncBT(coeffint, t.PInput, t.order, t.skd);
             else
-                depth += FHECKKSRNS::AdjustDepthFuncBT(coeffcomp, t.PInput, t.order);
+                depth += FHECKKSRNS::AdjustDepthFuncBT(coeffcomp, t.PInput, t.order, t.skd);
 
             parameters.SetMultiplicativeDepth(depth);
 
@@ -291,11 +341,9 @@ protected:
 #endif
 
             if (binaryLUT)
-                cc->EvalFuncBTSetup(numSlotsCKKS, t.PInput.GetMSB() - 1, coeffint, {0, 0}, t.lvlb, scaleMod, 0,
-                                    t.order);
+                cc->EvalFuncBTSetup(numSlotsCKKS, t.PInput, coeffint, {0, 0}, t.lvlb, scaleMod, 0, t.order);
             else
-                cc->EvalFuncBTSetup(numSlotsCKKS, t.PInput.GetMSB() - 1, coeffcomp, {0, 0}, t.lvlb, scaleMod, 0,
-                                    t.order);
+                cc->EvalFuncBTSetup(numSlotsCKKS, t.PInput, coeffcomp, {0, 0}, t.lvlb, scaleMod, 0, t.order);
 
 #ifdef BENCH
             stop = std::chrono::high_resolution_clock::now();
@@ -364,8 +412,8 @@ protected:
             std::transform(exact.begin(), exact.end(), exact.begin(),
                            [&](const int64_t& elem) { return (std::abs(elem)) % (t.POutput.ConvertToInt()); });
             auto max_error_it = std::max_element(exact.begin(), exact.end());
-            // std::cerr << "\n=======Max absolute error: " << *max_error_it << std::endl << std::endl;
-
+            // std::cerr << "\n=======Error count: " << std::accumulate(exact.begin(), exact.end(), 0) << "\n";
+            // std::cerr << "\n=======Max absolute error: " << *max_error_it << "\n";
             checkEquality((*max_error_it), int64_t(0), 0.0001, failmsg + " LUT evaluation fails");
         }
         catch (std::exception& e) {
@@ -389,7 +437,7 @@ protected:
 #endif
 
             bool flagSP = (t.numSlots <= t.ringDim / 2);  // sparse packing
-            // t.numSlots represents the number of values to be encrypted in BFV. If this number is the same as the ring dimension, then the CKKS slots is half.
+            // t.numSlots represents number of values to be encrypted in BFV. If same as ring dimension, CKKS slots is halved.
             auto numSlotsCKKS = flagSP ? t.numSlots : t.numSlots / 2;
 
             auto PInput  = t.PInput;  // Will get modified in the loop.
@@ -446,7 +494,7 @@ protected:
             uint32_t firstMod = t.Bigq.GetMSB() - 1;
 
             CCParams<CryptoContextCKKSRNS> parameters;
-            parameters.SetSecretKeyDist(SPARSE_TERNARY);
+            parameters.SetSecretKeyDist(t.skd);
             parameters.SetSecurityLevel(HEStd_NotSet);
             parameters.SetScalingModSize(dcrtBits);
             parameters.SetScalingTechnique(FIXEDMANUAL);
@@ -458,9 +506,9 @@ protected:
             uint32_t depth = t.levelsAvailableAfterBootstrap + t.lvlb[0] + t.lvlb[1] + 2;
 
             if (binaryLUT)
-                depth += FHECKKSRNS::AdjustDepthFuncBT(coeffintMod, t.POutput, t.order);
+                depth += FHECKKSRNS::AdjustDepthFuncBT(coeffintMod, t.POutput, t.order, t.skd);
             else
-                depth += FHECKKSRNS::AdjustDepthFuncBT(coeffcompMod, t.POutput, t.order);
+                depth += FHECKKSRNS::AdjustDepthFuncBT(coeffcompMod, t.POutput, t.order, t.skd);
 
             parameters.SetMultiplicativeDepth(depth);
 
@@ -491,11 +539,9 @@ protected:
 #endif
 
             if (binaryLUT)
-                cc->EvalFuncBTSetup(numSlotsCKKS, t.POutput.GetMSB() - 1, coeffintMod, {0, 0}, t.lvlb, scaleOutput, 0,
-                                    t.order);
+                cc->EvalFuncBTSetup(numSlotsCKKS, t.POutput, coeffintMod, {0, 0}, t.lvlb, scaleOutput, 0, t.order);
             else
-                cc->EvalFuncBTSetup(numSlotsCKKS, t.POutput.GetMSB() - 1, coeffcompMod, {0, 0}, t.lvlb, scaleOutput, 0,
-                                    t.order);
+                cc->EvalFuncBTSetup(numSlotsCKKS, t.POutput, coeffcompMod, {0, 0}, t.lvlb, scaleOutput, 0, t.order);
 
 #ifdef BENCH
             stop = std::chrono::high_resolution_clock::now();
@@ -616,10 +662,9 @@ protected:
                     std::transform(exact.begin(), exact.end(), exact.begin(),
                                    [&](const int64_t& elem) { return (std::abs(elem)) % (pOrig.ConvertToInt()); });
                     auto max_error_it = std::max_element(exact.begin(), exact.end());
-                    // std::cerr << "\n=======Max absolute error: " << *max_error_it << std::endl << std::endl;
-
-                    checkEquality((*max_error_it), int64_t(0), 0.0001,
-                                  failmsg + " Multi-precision sign evaluation fails");
+                    // std::cerr << "\n=======Error count: " << std::accumulate(exact.begin(), exact.end(), 0) << "\n";
+                    // std::cerr << "\n=======Max absolute error: " << *max_error_it << "\n";
+                    checkEquality((*max_error_it), int64_t(0), 0.0001, failmsg + " MP sign evaluation fails");
                 }
 
                 go = QBFVDouble > qDigitDouble;
@@ -660,7 +705,7 @@ protected:
             bool flagBR = (t.lvlb[0] != 1 || t.lvlb[1] != 1);
             bool flagSP = (t.numSlots <= t.ringDim / 2);  // sparse packing
 
-            // t.numSlots represents the number of values to be encrypted in BFV. If this number is the same as the ring dimension, then the CKKS slots is half.
+            // t.numSlots represents number of values to be encrypted in BFV. If same as ring dimension, CKKS slots is halved.
             auto numSlotsCKKS = flagSP ? t.numSlots : t.numSlots / 2;
 
             auto a = t.PInput.ConvertToInt<int64_t>();
@@ -693,7 +738,7 @@ protected:
             uint32_t dcrtBits = t.Bigq.GetMSB() - 1;
             uint32_t firstMod = t.Bigq.GetMSB() - 1;
             CCParams<CryptoContextCKKSRNS> parameters;
-            parameters.SetSecretKeyDist(SPARSE_TERNARY);
+            parameters.SetSecretKeyDist(t.skd);
             parameters.SetSecurityLevel(HEStd_NotSet);
             parameters.SetScalingModSize(dcrtBits);
             parameters.SetScalingTechnique(FIXEDMANUAL);
@@ -704,9 +749,9 @@ protected:
             uint32_t depth = t.levelsAvailableAfterBootstrap + t.lvlb[0] + t.lvlb[1] + 2 + t.levelsComputation;
 
             if (binaryLUT)
-                depth += FHECKKSRNS::AdjustDepthFuncBT(coeffint, t.PInput, t.order);
+                depth += FHECKKSRNS::AdjustDepthFuncBT(coeffint, t.PInput, t.order, t.skd);
             else
-                depth += FHECKKSRNS::AdjustDepthFuncBT(coeffcomp, t.PInput, t.order);
+                depth += FHECKKSRNS::AdjustDepthFuncBT(coeffcomp, t.PInput, t.order, t.skd);
 
             parameters.SetMultiplicativeDepth(depth);
 
@@ -737,11 +782,11 @@ protected:
 #endif
 
             if (binaryLUT)
-                cc->EvalFuncBTSetup(numSlotsCKKS, t.PInput.GetMSB() - 1, coeffint, {0, 0}, t.lvlb, scaleMod,
-                                    t.levelsComputation, t.order);
+                cc->EvalFuncBTSetup(numSlotsCKKS, t.PInput, coeffint, {0, 0}, t.lvlb, scaleMod, t.levelsComputation,
+                                    t.order);
             else
-                cc->EvalFuncBTSetup(numSlotsCKKS, t.PInput.GetMSB() - 1, coeffcomp, {0, 0}, t.lvlb, scaleMod,
-                                    t.levelsComputation, t.order);
+                cc->EvalFuncBTSetup(numSlotsCKKS, t.PInput, coeffcomp, {0, 0}, t.lvlb, scaleMod, t.levelsComputation,
+                                    t.order);
 
 #ifdef BENCH
             stop = std::chrono::high_resolution_clock::now();
@@ -859,8 +904,8 @@ protected:
                            [&](const int64_t& elem) { return (std::abs(elem)) % (t.POutput.ConvertToInt()); });
 
             auto max_error_it = std::max_element(exact2.begin(), exact2.end());
-            // std::cerr << "\n=======Max absolute error: " << *max_error_it << std::endl << std::endl;
-
+            // std::cerr << "\n=======Error count: " << std::accumulate(exact.begin(), exact.end(), 0) << "\n";
+            // std::cerr << "\n=======Max absolute error: " << *max_error_it << "\n";
             checkEquality((*max_error_it), int64_t(0), 0.0001, failmsg + " LUT evaluation fails");
 
             std::transform(exact3.begin(), exact3.end(), exact.begin(), [&](const int64_t& elem) {
@@ -873,8 +918,8 @@ protected:
             std::transform(exact.begin(), exact.end(), exact.begin(),
                            [&](const int64_t& elem) { return (std::abs(elem)) % (t.POutput.ConvertToInt()); });
             max_error_it = std::max_element(exact.begin(), exact.end());
-            // std::cerr << "\n=======Max absolute error: " << *max_error_it << std::endl << std::endl;
-
+            // std::cerr << "\n=======Error count: " << std::accumulate(exact.begin(), exact.end(), 0) << "\n";
+            // std::cerr << "\n=======Max absolute error: " << *max_error_it << "\n";
             checkEquality((*max_error_it), int64_t(0), 0.0001, failmsg + " LUT evaluation fails");
         }
         catch (std::exception& e) {
@@ -897,7 +942,7 @@ protected:
             t.lvlb     = LVLBDFLT;
 #endif
             bool flagSP = (t.numSlots <= t.ringDim / 2);  // sparse packing
-            // t.numSlots represents the number of values to be encrypted in BFV. If this number is the same as the ring dimension, then the CKKS slots is half.
+            // t.numSlots represents number of values to be encrypted in BFV. If same as ring dimension, CKKS slots is halved.
             auto numSlotsCKKS = flagSP ? t.numSlots : t.numSlots / 2;
 
             auto a  = t.PInput.ConvertToInt<int64_t>();
@@ -939,7 +984,7 @@ protected:
             uint32_t dcrtBits = t.Bigq.GetMSB() - 1;
             uint32_t firstMod = t.Bigq.GetMSB() - 1;
             CCParams<CryptoContextCKKSRNS> parameters;
-            parameters.SetSecretKeyDist(SPARSE_TERNARY);
+            parameters.SetSecretKeyDist(t.skd);
             parameters.SetSecurityLevel(HEStd_NotSet);
             parameters.SetScalingModSize(dcrtBits);
             parameters.SetScalingTechnique(FIXEDMANUAL);
@@ -950,9 +995,9 @@ protected:
             uint32_t depth = t.levelsAvailableAfterBootstrap + t.lvlb[0] + t.lvlb[1] + 2 + t.levelsComputation;
 
             if (binaryLUT)
-                depth += FHECKKSRNS::AdjustDepthFuncBT(coeffint1, t.PInput, t.order);
+                depth += FHECKKSRNS::AdjustDepthFuncBT(coeffint1, t.PInput, t.order, t.skd);
             else
-                depth += FHECKKSRNS::AdjustDepthFuncBT(coeffcomp1, t.PInput, t.order);
+                depth += FHECKKSRNS::AdjustDepthFuncBT(coeffcomp1, t.PInput, t.order, t.skd);
 
             parameters.SetMultiplicativeDepth(depth);
 
@@ -983,11 +1028,11 @@ protected:
 #endif
 
             if (binaryLUT)
-                cc->EvalFuncBTSetup(numSlotsCKKS, t.PInput.GetMSB() - 1, coeffint1, {0, 0}, t.lvlb, scaleMod,
-                                    t.levelsComputation, t.order);
+                cc->EvalFuncBTSetup(numSlotsCKKS, t.PInput, coeffint1, {0, 0}, t.lvlb, scaleMod, t.levelsComputation,
+                                    t.order);
             else
-                cc->EvalFuncBTSetup(numSlotsCKKS, t.PInput.GetMSB() - 1, coeffcomp1, {0, 0}, t.lvlb, scaleMod,
-                                    t.levelsComputation, t.order);
+                cc->EvalFuncBTSetup(numSlotsCKKS, t.PInput, coeffcomp1, {0, 0}, t.lvlb, scaleMod, t.levelsComputation,
+                                    t.order);
 
 #ifdef BENCH
             stop = std::chrono::high_resolution_clock::now();
@@ -1079,8 +1124,8 @@ protected:
             std::transform(exact.begin(), exact.end(), exact.begin(),
                            [&](const int64_t& elem) { return (std::abs(elem)) % (t.POutput.ConvertToInt()); });
             auto max_error_it = std::max_element(exact.begin(), exact.end());
-            // std::cerr << "\n=======Max absolute error: " << *max_error_it << std::endl << std::endl;
-
+            // std::cerr << "\n=======Error count: " << std::accumulate(exact.begin(), exact.end(), 0) << "\n";
+            // std::cerr << "\n=======Max absolute error: " << *max_error_it << "\n";
             checkEquality((*max_error_it), int64_t(0), 0.0001, failmsg + " LUT evaluation fails");
 
             std::transform(x.begin(), x.end(), exact.begin(), [&](const int64_t& elem) {
@@ -1093,8 +1138,8 @@ protected:
             std::transform(exact.begin(), exact.end(), exact.begin(),
                            [&](const int64_t& elem) { return (std::abs(elem)) % (t.POutput.ConvertToInt()); });
             max_error_it = std::max_element(exact.begin(), exact.end());
-            // std::cerr << "\n=======Max absolute error: " << *max_error_it << std::endl << std::endl;
-
+            // std::cerr << "\n=======Error count: " << std::accumulate(exact.begin(), exact.end(), 0) << "\n";
+            // std::cerr << "\n=======Max absolute error: " << *max_error_it << "\n";
             checkEquality((*max_error_it), int64_t(0), 0.0001, failmsg + " LUT evaluation fails");
         }
         catch (std::exception& e) {

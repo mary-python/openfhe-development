@@ -126,7 +126,17 @@ public:
 using namespace std::literals::complex_literals;
 
 class FHECKKSRNS : public FHERNS {
+private:
+    // correction factor, which we scale the message by to improve precision
+    uint32_t m_correctionFactor;
+
+    // key tuple is dim1, levelBudgetEnc, levelBudgetDec
+    std::map<uint32_t, std::shared_ptr<CKKSBootstrapPrecom>> m_bootPrecomMap;
+
     using ParmType = typename DCRTPoly::Params;
+    using DugType  = typename DCRTPoly::DugType;
+    using DggType  = typename DCRTPoly::DggType;
+    using TugType  = typename DCRTPoly::TugType;
 
 public:
     virtual ~FHECKKSRNS() = default;
@@ -147,11 +157,11 @@ public:
     Ciphertext<DCRTPoly> EvalBootstrap(ConstCiphertext<DCRTPoly> ciphertext, uint32_t numIterations,
                                        uint32_t precision) const override;
 
-    void EvalFuncBTSetup(const CryptoContextImpl<DCRTPoly>& cc, uint32_t numSlots, uint32_t digitSize,
+    void EvalFuncBTSetup(const CryptoContextImpl<DCRTPoly>& cc, uint32_t numSlots, const BigInteger& P,
                          const std::vector<std::complex<double>>& coefficients, const std::vector<uint32_t>& dim1,
                          const std::vector<uint32_t>& levelBudget, long double scaleMod,
                          uint32_t depthLeveledComputation = 0, size_t order = 1) override;
-    void EvalFuncBTSetup(const CryptoContextImpl<DCRTPoly>& cc, uint32_t numSlots, uint32_t digitSize,
+    void EvalFuncBTSetup(const CryptoContextImpl<DCRTPoly>& cc, uint32_t numSlots, const BigInteger& P,
                          const std::vector<int64_t>& coefficients, const std::vector<uint32_t>& dim1,
                          const std::vector<uint32_t>& levelBudget, long double scaleMod,
                          uint32_t depthLeveledComputation = 0, size_t order = 1) override;
@@ -271,7 +281,14 @@ public:
 
     template <typename VectorDataType>
     static uint32_t AdjustDepthFuncBT(const std::vector<VectorDataType>& coefficients, const BigInteger& PInput,
-                                      size_t order);
+                                      size_t order, SecretKeyDist skd = SPARSE_TERNARY);
+
+    // generates a key going from a denser secret to a sparser one
+    static EvalKey<DCRTPoly> KeySwitchGenSparse(const PrivateKey<DCRTPoly>& oldPrivateKey,
+                                                const PrivateKey<DCRTPoly>& newPrivateKey);
+
+    // generates a key going from a denser secret to a sparser one
+    static Ciphertext<DCRTPoly> KeySwitchSparse(Ciphertext<DCRTPoly>& ciphertext, const EvalKey<DCRTPoly>& ek);
 
     std::string SerializedObjectName() const {
         return "FHECKKSRNS";
@@ -343,7 +360,7 @@ private:
 #endif
 
     template <typename VectorDataType>
-    void EvalFuncBTSetupInternal(const CryptoContextImpl<DCRTPoly>& cc, uint32_t numSlots, uint32_t digitSize,
+    void EvalFuncBTSetupInternal(const CryptoContextImpl<DCRTPoly>& cc, uint32_t numSlots, const BigInteger& P,
                                  const std::vector<VectorDataType>& coefficients, const std::vector<uint32_t>& dim1,
                                  const std::vector<uint32_t>& levelBudget, long double scaleMod,
                                  uint32_t depthLeveledComputation = 0, size_t order = 1);
@@ -372,6 +389,8 @@ private:
     // TODO: unify this
     static constexpr uint32_t K_SPARSE     = 28;
     static constexpr uint32_t K_SPARSE_ALT = 25;
+    // corresponds to probability of less than 2^{-128}
+    static constexpr uint32_t K_SPARSE_ENCAPSULATED = 16;
 
     // upper bound for the number of overflows in the uniform secret case
     static constexpr uint32_t K_UNIFORM = 512;
@@ -380,16 +399,12 @@ private:
     // number of double-angle iterations in CKKS bootstrapping. Must be static because it is used in a static function.
     static constexpr uint32_t R_UNIFORM = 6;
     // number of double-angle iterations in CKKS bootstrapping. Must be static because it is used in a static function.
+    // same value is used for both SPARSE and ENCAPSULATED_SPARSE
     static constexpr uint32_t R_SPARSE = 3;
-
-    uint32_t m_correctionFactor;  // correction factor, which we scale the message by to improve precision
-
-    // key tuple is dim1, levelBudgetEnc, levelBudgetDec
-    std::map<uint32_t, std::shared_ptr<CKKSBootstrapPrecom>> m_bootPrecomMap;
 
     // TODO: regenerate these as hexfloat
 
-    // Chebyshev series coefficients for the SPARSE case
+    // Chebyshev series coefficients for the SPARSE case (degree 44)
     static const inline std::vector<double> g_coefficientsSparse{
         -0.18646470117093214,   0.036680543700430925,    -0.20323558926782626,     0.029327390306199311,
         -0.24346234149506416,   0.011710240188138248,    -0.27023281815251715,     -0.017621188001030602,
@@ -403,6 +418,18 @@ private:
         4.1486274737866247e-6,  2.7079833113674568e-7,   -4.3245388569898879e-7,   -2.6482744214856919e-8,
         3.9770028771436554e-8,  2.2951153557906580e-9,   -3.2556026220554990e-9,   -1.7691071323926939e-10,
         2.5459052150406730e-10};
+
+    // Chebyshev series coefficients for the SPARSE ENCAPSULATED case (degree 32)
+    static const inline std::vector<double> g_coefficientsSparseEncapsulated{
+        0.24554573401685137,    -0.047919064883347899,   0.28388702040840819,      -0.029944538735513584,
+        0.35576522619036460,    0.015106561885073030,    0.29532946674499999,      0.071203602333739374,
+        -0.10347347339668074,   0.044997590512555294,    -0.42750712431925747,     -0.090342129729094875,
+        0.36762876269324946,    0.049318066039335348,    -0.14535986272411980,     -0.015106938483063579,
+        0.035951935499240355,   0.0031036582188686437,   -0.0062644606607068463,   -0.00046609430477154916,
+        0.00082128798852385086, 0.000053910533892372678, -0.000084551549768927401, -4.9773801787288514e-6,
+        7.0466620439083618e-6,  3.7659807574103204e-7,   -4.8648510153626034e-7,   -2.3830267651437146e-8,
+        2.8329709716159918e-8,  1.2817720050334158e-9,   -1.4122220430105397e-9,   -5.9306213139085216e-11,
+        6.3298928388417848e-11};
 
     // Chebyshev series coefficients for the OPTIMIZED/uniform case
     static const inline std::vector<double> g_coefficientsUniform{
@@ -465,7 +492,7 @@ private:
         1.0768090434260388e-13, -2.1478500584069139e-15, -1.3891315735425435e-14};
 
     // Coefficients for the function std::exp(1i * Pi/2.0 * x) in [-25, 25] of degree 58
-    // Needs two double-angle iterations to get std::exp(1i * 2Pi * x)
+    // Need two double-angle iterations to get std::exp(1i * 2Pi * x)
     static const inline std::vector<std::complex<double>> coeff_exp_25_double_58{
         0.18062800362446218561 + 8.4301680513910193717e-16i,
         -2.6814708645607593834e-17 + 0.18179610866713943884i,
@@ -527,8 +554,59 @@ private:
         6.4813238345023286309e-17 + 2.028849383161462318e-06i,
         -9.1760095736556924413e-07 + 1.0884654759434134894e-15i};
 
-    // Coefficients for the function std::exp(1i * Pi/2.0 * x) in [-25, 25] of degree 118
-    // Needs two double-angle iterations to get std::exp(1i * 2Pi * x)
+    // Coefficients for the function std::exp(1i * Pi/2.0 * x) in [-16, 16] of degree 46
+    // Need two double-angle iterations to get std::exp(1i * 2Pi * x)
+    static const inline std::vector<std::complex<double>> coeff_exp_16_double_46{
+        0.22393566906777329084,
+        4.72e-18 - 0.22176384914036376128i,
+        0.24158307546266130639 - 7.09e-18i,
+        -0.18331470851313935722i,
+        0.28534623846463541552 + 5.91e-18i,
+        -2.362e-18 - 0.092486179824488604084i,
+        0.32214532018151836867 - 4.72e-18i,
+        0.061326880477941263237i,
+        0.28798365357787297780 - 4.72e-18i,
+        1.417e-17 + 0.24466296846427090794i,
+        0.112756709876059055264 - 7.087e-18i,
+        0.33439190718203853914i,
+        -0.17995397739265364678 + 2.36e-18i,
+        9.45e-18 + 0.16254851699551037258i,
+        -0.34811157721125479680 - 2.36e-18i,
+        2.95e-18 - 0.22527723082929962395i,
+        -0.079206690817228031509 - 3.543e-18i,
+        9.45e-18 - 0.32612632178540534866i,
+        0.36198254675123692214 - 4.13e-18i,
+        -4.72e-18 + 0.19237548287066727482i,
+        0.071116210979946081761 - 9.449e-18i,
+        -7.09e-18 + 0.30556044798491310832i,
+        -0.43951407397686892420 + 2.36e-18i,
+        4.72e-18 - 0.46389876376571992367i,
+        0.40955141151976887093 - 3.54e-18i,
+        0.31828681535788988510i,
+        -0.22366008829505132360 - 4.72e-18i,
+        4.72e-18 - 0.14446909676096356123i,
+        0.086745018497585937856 - 7.087e-18i,
+        2.362e-18 + 0.048813481993878263254i,
+        -0.025904132260782003483 - 2.362e-18i,
+        2.3622e-18 - 0.0130280784432669702322i,
+        0.0062348555293589751417 - 7.0865e-18i,
+        -1.41731e-17 + 0.0028488507881147717878i,
+        -0.00124638777412581667689 + 6.49599e-18i,
+        -1.77163e-18 - 0.00052341839132928819674i,
+        0.00021144315086689963591 - 2.36218e-18i,
+        -4.724353e-18 + 0.000082321616249500458072i,
+        -0.000030941853907365078754,
+        -9.4487066e-18 - 0.0000112448146643207249387i,
+        3.9566691190946415917e-6 + 4.7243533e-18i,
+        -4.72435330e-18 + 1.34965353351963424859e-6i,
+        -4.4681665430474632002e-7 - 7.08652994e-18i,
+        3.54326497e-18 - 1.4370869470312489006e-7i,
+        4.4978580236218894379e-8 + 2.362176648e-18i,
+        -4.7243532963e-18 + 1.35960019696524527036e-8i,
+        -4.3910916203385461663e-9 - 4.7243532963e-18i};
+
+    // Coefficients for the function std::exp(1i * Pi/2.0 * x) in [-25, 25] of degree 66
+    // Need two double-angle iterations to get std::exp(1i * 2Pi * x)
     static const inline std::vector<std::complex<double>> coeff_exp_25_double_66{
         0.18062800362446132518 - 3.31e-18i,
         0.18179610866714035478i,
@@ -599,7 +677,7 @@ private:
         -2.1319297239691972103e-10 + 1.118508271078e-17i};
 
     // Coefficients for the function std::cos(Pi/2.0 * x) in [-25, 25] of degree 58
-    // Needs one double-angle iteration to get std::cos(Pi x)
+    // Need one double-angle iteration to get std::cos(Pi x)
     static const inline std::vector<double> coeff_cos_25_double{
         0.1806280036244622,    -2.681470864560759e-17, 0.1713692038391032,     -3.322436487887783e-17,
         0.1409257969070406,    -1.712377885438801e-16, 0.08287605585684224,    5.203582386074158e-16,
@@ -616,6 +694,19 @@ private:
         0.003213857096252545,  5.93628253897826e-17,   -0.000766817546854298,  -7.417853995833706e-16,
         0.0001619519564040075, 1.125732628584102e-15,  -3.058257826123803e-05, 1.052440561724082e-15,
         5.219938298843079e-06, 6.481323834502329e-17,  -9.176009573655692e-07};
+
+    // Coefficients for the function std::cos(Pi/2.0 * x) in [-16, 16] of degree 50
+    // Need one double-angle iteration to get std::cos(Pi x)
+    static const inline std::vector<double> coeff_cos_16_double{
+        0.22393566906777398473,    0, 0.24158307546266097332,      0, 0.28534623846463491592,    0,
+        0.32214532018151842419,    0, 0.28798365357787275576,      0, 0.11275670987605923568,    0,
+        -0.17995397739265303616,   0, -0.34811157721125485232,     0, -0.079206690817227934365,  0,
+        0.36198254675123747726,    0, 0.071116210979945873594,     0, -0.43951407397686931278,   0,
+        0.40955141151976831582,    0, -0.22366008829505151789,     0, 0.086745018497586368067,   0,
+        -0.025904132260781812663,  0, 0.0062348555293592717794,    0, -0.0012463877741259879808, 0,
+        0.00021144315086651279257, 0, -0.000030941853901263439649, 0, 3.9566690157196778376e-6,  0,
+        -4.4681499222112024566e-7, 0, 4.4954023066126450148e-8,    0, -4.0598441689075914500e-9, 0,
+        3.3135661534883555537e-10, 0, -2.6219531992178505467e-11};
 };
 
 }  // namespace lbcrypto

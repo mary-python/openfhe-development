@@ -195,9 +195,9 @@ void ArbitraryLUT(BigInteger QBFVInit, BigInteger PInput, BigInteger POutput, Bi
     // TODO: move the computation of scaleMod and QPrime inside.
 
     if (binaryLUT)
-        cc->EvalFuncBTSetup(numSlotsCKKS, PInput.GetMSB() - 1, coeffint, {0, 0}, lvlb, scaleMod, 0, order);
+        cc->EvalFuncBTSetup(numSlotsCKKS, PInput, coeffint, {0, 0}, lvlb, scaleMod, 0, order);
     else
-        cc->EvalFuncBTSetup(numSlotsCKKS, PInput.GetMSB() - 1, coeffcomp, {0, 0}, lvlb, scaleMod, 0, order);
+        cc->EvalFuncBTSetup(numSlotsCKKS, PInput, coeffcomp, {0, 0}, lvlb, scaleMod, 0, order);
 
     cc->EvalBootstrapKeyGen(keyPair.secretKey, numSlotsCKKS);
     cc->EvalMultKeyGen(keyPair.secretKey);
@@ -360,11 +360,9 @@ void MultiValueBootstrapping(BigInteger QBFVInit, BigInteger PInput, BigInteger 
     double scaleMod = QPrime.ConvertToLongDouble() / (Bigq.ConvertToLongDouble() * POutput.ConvertToDouble());
 
     if (binaryLUT)
-        cc->EvalFuncBTSetup(numSlotsCKKS, PInput.GetMSB() - 1, coeffint1, {0, 0}, lvlb, scaleMod, levelsComputation,
-                            order);
+        cc->EvalFuncBTSetup(numSlotsCKKS, PInput, coeffint1, {0, 0}, lvlb, scaleMod, levelsComputation, order);
     else
-        cc->EvalFuncBTSetup(numSlotsCKKS, PInput.GetMSB() - 1, coeffcomp1, {0, 0}, lvlb, scaleMod, levelsComputation,
-                            order);
+        cc->EvalFuncBTSetup(numSlotsCKKS, PInput, coeffcomp1, {0, 0}, lvlb, scaleMod, levelsComputation, order);
 
     cc->EvalBootstrapKeyGen(keyPair.secretKey, numSlotsCKKS);
     cc->EvalMultKeyGen(keyPair.secretKey);
@@ -617,9 +615,9 @@ void MultiPrecisionSign(BigInteger QBFVInit, BigInteger PInput, BigInteger PDigi
     cc->EvalMultKeyGen(keyPair.secretKey);
 
     if (binaryLUT)
-        cc->EvalFuncBTSetup(numSlotsCKKS, PDigit.GetMSB() - 1, coeffintMod, {0, 0}, lvlb, scaleOutput, 0, order);
+        cc->EvalFuncBTSetup(numSlotsCKKS, PDigit, coeffintMod, {0, 0}, lvlb, scaleOutput, 0, order);
     else
-        cc->EvalFuncBTSetup(numSlotsCKKS, PDigit.GetMSB() - 1, coeffcompMod, {0, 0}, lvlb, scaleOutput, 0, order);
+        cc->EvalFuncBTSetup(numSlotsCKKS, PDigit, coeffcompMod, {0, 0}, lvlb, scaleOutput, 0, order);
 
     cc->EvalBootstrapKeyGen(keyPair.secretKey, numSlotsCKKS);
 
