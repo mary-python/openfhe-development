@@ -164,11 +164,11 @@ void FHECKKSRNS::EvalBootstrapSetup(const CryptoContextImpl<DCRTPoly>& cc, std::
 
         // computes all powers of a primitive root of unity exp(2 * M_PI/m)
         std::vector<std::complex<double>> ksiPows(m + 1);
-        double ak = 2.0 * M_PI / m;
+        double ak = 2 * M_PI / m;
         for (uint32_t j = 0; j < m; ++j) {
             double angle = ak * j;
-            ksiPows[j].real(cos(angle));
-            ksiPows[j].imag(sin(angle));
+            ksiPows[j].real(std::cos(angle));
+            ksiPows[j].imag(std::sin(angle));
         }
         ksiPows[m] = ksiPows[0];
 
@@ -323,11 +323,11 @@ void FHECKKSRNS::EvalBootstrapPrecompute(const CryptoContextImpl<DCRTPoly>& cc, 
 
     // computes all powers of a primitive root of unity exp(2 * M_PI/m)
     std::vector<std::complex<double>> ksiPows(m + 1);
-    double ak = 2.0 * M_PI / m;
+    double ak = 2 * M_PI / m;
     for (uint32_t j = 0; j < m; ++j) {
         double angle = ak * j;
-        ksiPows[j].real(cos(angle));
-        ksiPows[j].imag(sin(angle));
+        ksiPows[j].real(std::cos(angle));
+        ksiPows[j].imag(std::sin(angle));
     }
     ksiPows[m] = ksiPows[0];
 
@@ -2789,7 +2789,7 @@ void FHECKKSRNS::EvalFuncBTSetupInternal(const CryptoContextImpl<DCRTPoly>& cc, 
     if (cryptoParams->GetScalingTechnique() == FLEXIBLEAUTO || cryptoParams->GetScalingTechnique() == FLEXIBLEAUTOEXT)
         OPENFHE_THROW("CKKS Functional Bootstrapping is supported for FIXEDMANUAL and FIXEDAUTO methods only.");
     if (cryptoParams->GetKeySwitchTechnique() != HYBRID)
-        OPENFHE_THROW("CKKS Bootstrapping is only supported for the Hybrid key switching method.");
+        OPENFHE_THROW("CKKS Functional Bootstrapping is only supported for the Hybrid key switching method.");
 
     uint32_t M     = cc.GetCyclotomicOrder();
     uint32_t slots = (numSlots == 0) ? M / 4 : numSlots;
@@ -2833,11 +2833,11 @@ void FHECKKSRNS::EvalFuncBTSetupInternal(const CryptoContextImpl<DCRTPoly>& cc, 
 
     // computes all powers of a primitive root of unity exp(2 * M_PI/m)
     std::vector<std::complex<double>> ksiPows(m + 1);
-    double ak = 2.0 * M_PI / m;
+    double ak = 2 * M_PI / m;
     for (uint32_t j = 0; j < m; ++j) {
         double angle = ak * j;
-        ksiPows[j].real(cos(angle));
-        ksiPows[j].imag(sin(angle));
+        ksiPows[j].real(std::cos(angle));
+        ksiPows[j].imag(std::sin(angle));
     }
     ksiPows[m] = ksiPows[0];
 
@@ -3142,7 +3142,7 @@ std::shared_ptr<seriesPowers<DCRTPoly>> FHECKKSRNS::EvalMVBPrecomputeInternal(
             cc->ModReduceInPlace(ctxtEnc[1]);  // cos^2(pi x)
         }
         else {
-            auto& coeff_exp = (skd == SPARSE_ENCAPSULATED) ? coeff_exp_16_double_50 :
+            auto& coeff_exp = (skd == SPARSE_ENCAPSULATED) ? coeff_exp_16_double_46 :
                               (digitBitSize > 10)          ? coeff_exp_25_double_66 :
                                                              coeff_exp_25_double_58;
 
@@ -3229,7 +3229,7 @@ std::shared_ptr<seriesPowers<DCRTPoly>> FHECKKSRNS::EvalMVBPrecomputeInternal(
             cc->ModReduceInPlace(ctxtEnc[0]);  // cos^2(pi x)
         }
         else {
-            auto& coeff_exp = (skd == SPARSE_ENCAPSULATED) ? coeff_exp_16_double_50 :
+            auto& coeff_exp = (skd == SPARSE_ENCAPSULATED) ? coeff_exp_16_double_46 :
                               (digitBitSize > 10)          ? coeff_exp_25_double_66 :
                                                              coeff_exp_25_double_58;
 
@@ -3536,7 +3536,7 @@ template <typename VectorDataType>
 uint32_t FHECKKSRNS::AdjustDepthFuncBT(const std::vector<VectorDataType>& coefficients, const BigInteger& PInput,
                                        size_t order, SecretKeyDist skd) {
     auto& coeff_cos = (skd == SPARSE_ENCAPSULATED) ? coeff_cos_16_double : coeff_cos_25_double;
-    auto& coeff_exp = (skd == SPARSE_ENCAPSULATED)   ? coeff_exp_16_double_50 :
+    auto& coeff_exp = (skd == SPARSE_ENCAPSULATED)   ? coeff_exp_16_double_46 :
                       (PInput.ConvertToInt() > 1024) ? coeff_exp_25_double_66 :
                                                        coeff_exp_25_double_58;
     uint32_t depth  = 0;

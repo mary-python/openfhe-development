@@ -46,6 +46,7 @@
 #include <chrono>
 #include <complex>
 #include <iterator>
+#include <numeric>
 #include <ostream>
 #include <vector>
 
@@ -167,9 +168,9 @@ static std::vector<TEST_CASE_FUNCBT> testCases = {
     {    FUNCBT_ARBLUT, "19", QBFVINITLARGE,      4096,    4096,   1UL << 55, 1UL << 55,     2000, SCALESTEPTHI,     1,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
     {    FUNCBT_ARBLUT, "20", QBFVINITLARGE,      4096,    4096,   1UL << 55, 1UL << 55,     2000, SCALESTEPTHI,     2,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
     {    FUNCBT_ARBLUT, "21", QBFVINITLARGE,      4096,    4096,   1UL << 55, 1UL << 55,     2000, SCALESTEPTHI,     3,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
-    {    FUNCBT_ARBLUT, "22", QBFVINITLARGE,     16382,   16382,   1UL << 58, 1UL << 58,     8000, SCALESTEPTHI,     1,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
-    {    FUNCBT_ARBLUT, "23", QBFVINITLARGE,     16382,   16382,   1UL << 58, 1UL << 58,     8000, SCALESTEPTHI,     2,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
-    {    FUNCBT_ARBLUT, "24", QBFVINITLARGE,     16382,   16382,   1UL << 58, 1UL << 58,     8000, SCALESTEPTHI,     3,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
+    {    FUNCBT_ARBLUT, "22", QBFVINITLARGE,     16384,   16384,   1UL << 58, 1UL << 58,     8000, SCALESTEPTHI,     1,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
+    {    FUNCBT_ARBLUT, "23", QBFVINITLARGE,     16384,   16384,   1UL << 58, 1UL << 58,     8000, SCALESTEPTHI,     2,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
+    {    FUNCBT_ARBLUT, "24", QBFVINITLARGE,     16384,   16384,   1UL << 58, 1UL << 58,     8000, SCALESTEPTHI,     3,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
     { FUNCBT_SIGNDIGIT, "25",      QBFVINIT,      4096,       2,   1UL << 46, 1UL << 35,        1,            1,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
     { FUNCBT_SIGNDIGIT, "26",      QBFVINIT,      4096,       2,   1UL << 46, 1UL << 35,        1,            1,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},  // not needed for benchmark
     { FUNCBT_SIGNDIGIT, "27",      QBFVINIT,      4096,       4,   1UL << 45, 1UL << 35,       10,            2,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_TERNARY},
@@ -193,8 +194,6 @@ static std::vector<TEST_CASE_FUNCBT> testCases = {
     {       FUNCBT_MVB, "45",      QBFVINIT,         2,       2,   1UL << 35, 1UL << 35,        1, SCALESTEPTHI,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3,        1,    {3, 3}, SPARSE_TERNARY},  // not needed for benchmark
     {       FUNCBT_MVB, "46",      QBFVINIT,    PINPUT,  PINPUT,   1UL << 48, 1UL << 48, SCALETHI, SCALESTEPTHI,     1,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3,        1,    {3, 3}, SPARSE_TERNARY},  // not needed for benchmark
 
-
-
     // These are temporary
     {    FUNCBT_ARBLUT, "101",      QBFVINIT,         2,       2,   1UL << 33, 1UL << 33,        1, SCALESTEPTHI,     1,  1 << 15, 1 << 15,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {3, 3}, SPARSE_ENCAPSULATED},
     {    FUNCBT_ARBLUT, "102",      QBFVINIT,         2,       2,   1UL << 33, 1UL << 33,        1, SCALESTEPTHI,     2,  1 << 15, 1 << 15,     AFTERBOOT,     BEFOREBOOT,    7, LVLSCOMP,    {3, 3}, SPARSE_ENCAPSULATED},
@@ -217,9 +216,9 @@ static std::vector<TEST_CASE_FUNCBT> testCases = {
     {    FUNCBT_ARBLUT, "119", QBFVINITLARGE,      4096,    4096,   1UL << 55, 1UL << 55,     2000, SCALESTEPTHI,     1,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
     {    FUNCBT_ARBLUT, "120", QBFVINITLARGE,      4096,    4096,   1UL << 55, 1UL << 55,     2000, SCALESTEPTHI,     2,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
     {    FUNCBT_ARBLUT, "121", QBFVINITLARGE,      4096,    4096,   1UL << 55, 1UL << 55,     2000, SCALESTEPTHI,     3,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
-    {    FUNCBT_ARBLUT, "122", QBFVINITLARGE,     16382,   16382,   1UL << 58, 1UL << 58,     8000, SCALESTEPTHI,     1,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
-    {    FUNCBT_ARBLUT, "123", QBFVINITLARGE,     16382,   16382,   1UL << 58, 1UL << 58,     8000, SCALESTEPTHI,     2,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
-    {    FUNCBT_ARBLUT, "124", QBFVINITLARGE,     16382,   16382,   1UL << 58, 1UL << 58,     8000, SCALESTEPTHI,     3,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
+    {    FUNCBT_ARBLUT, "122", QBFVINITLARGE,     16384,   16384,   1UL << 59, 1UL << 59,     8000, SCALESTEPTHI,     1,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
+    {    FUNCBT_ARBLUT, "123", QBFVINITLARGE,     16384,   16384,   1UL << 59, 1UL << 59,     8000, SCALESTEPTHI,     2,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
+    {    FUNCBT_ARBLUT, "124", QBFVINITLARGE,     16384,   16384,   1UL << 59, 1UL << 59,     8000, SCALESTEPTHI,     3,  1 << 17, 1 << 17,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
     { FUNCBT_SIGNDIGIT, "125",      QBFVINIT,      4096,       2,   1UL << 46, 1UL << 35,        1,            1,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
     { FUNCBT_SIGNDIGIT, "126",      QBFVINIT,      4096,       2,   1UL << 46, 1UL << 35,        1,            1,     2,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},  // not needed for benchmark
     { FUNCBT_SIGNDIGIT, "127",      QBFVINIT,      4096,       4,   1UL << 45, 1UL << 35,       10,            2,     1,  1 << 16, 1 << 16,     AFTERBOOT,     BEFOREBOOT,    3, LVLSCOMP,    {4, 4}, SPARSE_ENCAPSULATED},
@@ -265,7 +264,7 @@ protected:
             t.lvlb     = LVLBDFLT;
 #endif
             bool flagSP = (t.numSlots <= t.ringDim / 2);  // sparse packing
-            // t.numSlots represents the number of values to be encrypted in BFV. If this number is the same as the ring dimension, then the CKKS slots is half.
+            // t.numSlots represents number of values to be encrypted in BFV. If same as ring dimension, CKKS slots is halved.
             auto numSlotsCKKS = flagSP ? t.numSlots : t.numSlots / 2;
 
             auto a = t.PInput.ConvertToInt<int64_t>();
@@ -413,8 +412,8 @@ protected:
             std::transform(exact.begin(), exact.end(), exact.begin(),
                            [&](const int64_t& elem) { return (std::abs(elem)) % (t.POutput.ConvertToInt()); });
             auto max_error_it = std::max_element(exact.begin(), exact.end());
-            // std::cerr << "\n=======Max absolute error: " << *max_error_it << std::endl << std::endl;
-
+            // std::cerr << "\n=======Error count: " << std::accumulate(exact.begin(), exact.end(), 0) << "\n";
+            // std::cerr << "\n=======Max absolute error: " << *max_error_it << "\n";
             checkEquality((*max_error_it), int64_t(0), 0.0001, failmsg + " LUT evaluation fails");
         }
         catch (std::exception& e) {
@@ -438,7 +437,7 @@ protected:
 #endif
 
             bool flagSP = (t.numSlots <= t.ringDim / 2);  // sparse packing
-            // t.numSlots represents the number of values to be encrypted in BFV. If this number is the same as the ring dimension, then the CKKS slots is half.
+            // t.numSlots represents number of values to be encrypted in BFV. If same as ring dimension, CKKS slots is halved.
             auto numSlotsCKKS = flagSP ? t.numSlots : t.numSlots / 2;
 
             auto PInput  = t.PInput;  // Will get modified in the loop.
@@ -663,10 +662,9 @@ protected:
                     std::transform(exact.begin(), exact.end(), exact.begin(),
                                    [&](const int64_t& elem) { return (std::abs(elem)) % (pOrig.ConvertToInt()); });
                     auto max_error_it = std::max_element(exact.begin(), exact.end());
-                    // std::cerr << "\n=======Max absolute error: " << *max_error_it << std::endl << std::endl;
-
-                    checkEquality((*max_error_it), int64_t(0), 0.0001,
-                                  failmsg + " Multi-precision sign evaluation fails");
+                    // std::cerr << "\n=======Error count: " << std::accumulate(exact.begin(), exact.end(), 0) << "\n";
+                    // std::cerr << "\n=======Max absolute error: " << *max_error_it << "\n";
+                    checkEquality((*max_error_it), int64_t(0), 0.0001, failmsg + " MP sign evaluation fails");
                 }
 
                 go = QBFVDouble > qDigitDouble;
@@ -707,7 +705,7 @@ protected:
             bool flagBR = (t.lvlb[0] != 1 || t.lvlb[1] != 1);
             bool flagSP = (t.numSlots <= t.ringDim / 2);  // sparse packing
 
-            // t.numSlots represents the number of values to be encrypted in BFV. If this number is the same as the ring dimension, then the CKKS slots is half.
+            // t.numSlots represents number of values to be encrypted in BFV. If same as ring dimension, CKKS slots is halved.
             auto numSlotsCKKS = flagSP ? t.numSlots : t.numSlots / 2;
 
             auto a = t.PInput.ConvertToInt<int64_t>();
@@ -906,8 +904,8 @@ protected:
                            [&](const int64_t& elem) { return (std::abs(elem)) % (t.POutput.ConvertToInt()); });
 
             auto max_error_it = std::max_element(exact2.begin(), exact2.end());
-            // std::cerr << "\n=======Max absolute error: " << *max_error_it << std::endl << std::endl;
-
+            // std::cerr << "\n=======Error count: " << std::accumulate(exact.begin(), exact.end(), 0) << "\n";
+            // std::cerr << "\n=======Max absolute error: " << *max_error_it << "\n";
             checkEquality((*max_error_it), int64_t(0), 0.0001, failmsg + " LUT evaluation fails");
 
             std::transform(exact3.begin(), exact3.end(), exact.begin(), [&](const int64_t& elem) {
@@ -920,8 +918,8 @@ protected:
             std::transform(exact.begin(), exact.end(), exact.begin(),
                            [&](const int64_t& elem) { return (std::abs(elem)) % (t.POutput.ConvertToInt()); });
             max_error_it = std::max_element(exact.begin(), exact.end());
-            // std::cerr << "\n=======Max absolute error: " << *max_error_it << std::endl << std::endl;
-
+            // std::cerr << "\n=======Error count: " << std::accumulate(exact.begin(), exact.end(), 0) << "\n";
+            // std::cerr << "\n=======Max absolute error: " << *max_error_it << "\n";
             checkEquality((*max_error_it), int64_t(0), 0.0001, failmsg + " LUT evaluation fails");
         }
         catch (std::exception& e) {
@@ -944,7 +942,7 @@ protected:
             t.lvlb     = LVLBDFLT;
 #endif
             bool flagSP = (t.numSlots <= t.ringDim / 2);  // sparse packing
-            // t.numSlots represents the number of values to be encrypted in BFV. If this number is the same as the ring dimension, then the CKKS slots is half.
+            // t.numSlots represents number of values to be encrypted in BFV. If same as ring dimension, CKKS slots is halved.
             auto numSlotsCKKS = flagSP ? t.numSlots : t.numSlots / 2;
 
             auto a  = t.PInput.ConvertToInt<int64_t>();
@@ -1126,8 +1124,8 @@ protected:
             std::transform(exact.begin(), exact.end(), exact.begin(),
                            [&](const int64_t& elem) { return (std::abs(elem)) % (t.POutput.ConvertToInt()); });
             auto max_error_it = std::max_element(exact.begin(), exact.end());
-            // std::cerr << "\n=======Max absolute error: " << *max_error_it << std::endl << std::endl;
-
+            // std::cerr << "\n=======Error count: " << std::accumulate(exact.begin(), exact.end(), 0) << "\n";
+            // std::cerr << "\n=======Max absolute error: " << *max_error_it << "\n";
             checkEquality((*max_error_it), int64_t(0), 0.0001, failmsg + " LUT evaluation fails");
 
             std::transform(x.begin(), x.end(), exact.begin(), [&](const int64_t& elem) {
@@ -1140,8 +1138,8 @@ protected:
             std::transform(exact.begin(), exact.end(), exact.begin(),
                            [&](const int64_t& elem) { return (std::abs(elem)) % (t.POutput.ConvertToInt()); });
             max_error_it = std::max_element(exact.begin(), exact.end());
-            // std::cerr << "\n=======Max absolute error: " << *max_error_it << std::endl << std::endl;
-
+            // std::cerr << "\n=======Error count: " << std::accumulate(exact.begin(), exact.end(), 0) << "\n";
+            // std::cerr << "\n=======Max absolute error: " << *max_error_it << "\n";
             checkEquality((*max_error_it), int64_t(0), 0.0001, failmsg + " LUT evaluation fails");
         }
         catch (std::exception& e) {
