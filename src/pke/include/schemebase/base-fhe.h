@@ -125,45 +125,47 @@ public:
    * determined by the user experimentally by first running EvalBootstrap with numIterations = 1 and precision = 0 (unused).
    * @return the refreshed ciphertext.
    */
-    virtual Ciphertext<Element> EvalBootstrap(ConstCiphertext<Element> ciphertext, uint32_t numIterations,
+    virtual Ciphertext<Element> EvalBootstrap(ConstCiphertext<Element>& ciphertext, uint32_t numIterations,
                                               uint32_t precision) const {
         OPENFHE_THROW("EvalBootstrap is not implemented for this scheme");
     }
 
-    virtual void EvalFuncBTSetup(const CryptoContextImpl<Element>& cc, uint32_t numSlots, const BigInteger& P,
-                                 const std::vector<std::complex<double>>& coeffs, const std::vector<uint32_t>& dim1,
-                                 const std::vector<uint32_t>& levelBudget, long double scaleMod,
-                                 uint32_t depthLeveledComputation = 0, size_t order = 1) {
+    virtual void EvalFBTSetup(const CryptoContextImpl<Element>& cc, const std::vector<std::complex<double>>& coeffs,
+                              uint32_t numSlots, const BigInteger& PIn, const BigInteger& POut, const BigInteger& Bigq,
+                              const PublicKey<DCRTPoly>& pubKey, const std::vector<uint32_t>& dim1,
+                              const std::vector<uint32_t>& levelBudget, uint32_t lvlsAfterBoot = 0,
+                              uint32_t depthLeveledComputation = 0, size_t order = 1) {
         OPENFHE_THROW("Not supported");
     }
-    virtual void EvalFuncBTSetup(const CryptoContextImpl<Element>& cc, uint32_t numSlots, const BigInteger& P,
-                                 const std::vector<int64_t>& coeffs, const std::vector<uint32_t>& dim1,
-                                 const std::vector<uint32_t>& levelBudget, long double scaleMod,
-                                 uint32_t depthLeveledComputation = 0, size_t order = 1) {
-        OPENFHE_THROW("Not supported");
-    }
-
-    virtual Ciphertext<Element> EvalFuncBT(ConstCiphertext<DCRTPoly>& ciphertext,
-                                           const std::vector<std::complex<double>>& coeffs, uint32_t digitBitSize,
-                                           const BigInteger& initialScaling, uint64_t postScaling,
-                                           uint32_t levelToReduce = 0, size_t order = 1) {
-        OPENFHE_THROW("Not supported");
-    }
-    virtual Ciphertext<Element> EvalFuncBT(ConstCiphertext<DCRTPoly>& ciphertext, const std::vector<int64_t>& coeffs,
-                                           uint32_t digitBitSize, const BigInteger& initialScaling,
-                                           uint64_t postScaling, uint32_t levelToReduce = 0, size_t order = 1) {
+    virtual void EvalFBTSetup(const CryptoContextImpl<Element>& cc, const std::vector<int64_t>& coeffs,
+                              uint32_t numSlots, const BigInteger& PIn, const BigInteger& POut, const BigInteger& Bigq,
+                              const PublicKey<DCRTPoly>& pubKey, const std::vector<uint32_t>& dim1,
+                              const std::vector<uint32_t>& levelBudget, uint32_t lvlsAfterBoot = 0,
+                              uint32_t depthLeveledComputation = 0, size_t order = 1) {
         OPENFHE_THROW("Not supported");
     }
 
-    virtual Ciphertext<Element> EvalFuncBTNoDecoding(ConstCiphertext<DCRTPoly>& ciphertext,
-                                                     const std::vector<std::complex<double>>& coeffs,
-                                                     uint32_t digitBitSize, const BigInteger& initialScaling,
-                                                     size_t order = 1) {
+    virtual Ciphertext<Element> EvalFBT(ConstCiphertext<DCRTPoly>& ciphertext,
+                                        const std::vector<std::complex<double>>& coeffs, uint32_t digitBitSize,
+                                        const BigInteger& initialScaling, uint64_t postScaling,
+                                        uint32_t levelToReduce = 0, size_t order = 1) {
         OPENFHE_THROW("Not supported");
     }
-    virtual Ciphertext<Element> EvalFuncBTNoDecoding(ConstCiphertext<DCRTPoly>& ciphertext,
-                                                     const std::vector<int64_t>& coeffs, uint32_t digitBitSize,
-                                                     const BigInteger& initialScaling, size_t order = 1) {
+    virtual Ciphertext<Element> EvalFBT(ConstCiphertext<DCRTPoly>& ciphertext, const std::vector<int64_t>& coeffs,
+                                        uint32_t digitBitSize, const BigInteger& initialScaling, uint64_t postScaling,
+                                        uint32_t levelToReduce = 0, size_t order = 1) {
+        OPENFHE_THROW("Not supported");
+    }
+
+    virtual Ciphertext<Element> EvalFBTNoDecoding(ConstCiphertext<DCRTPoly>& ciphertext,
+                                                  const std::vector<std::complex<double>>& coeffs,
+                                                  uint32_t digitBitSize, const BigInteger& initialScaling,
+                                                  size_t order = 1) {
+        OPENFHE_THROW("Not supported");
+    }
+    virtual Ciphertext<Element> EvalFBTNoDecoding(ConstCiphertext<DCRTPoly>& ciphertext,
+                                                  const std::vector<int64_t>& coeffs, uint32_t digitBitSize,
+                                                  const BigInteger& initialScaling, size_t order = 1) {
         OPENFHE_THROW("Not supported");
     }
 

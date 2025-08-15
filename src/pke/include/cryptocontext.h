@@ -2136,33 +2136,6 @@ public:
         return EvalMultMutable(ciphertext, plaintext);
     }
 
-    // TODO (dsuponit): commented the code below to avoid compiler errors
-    // Ciphertext<Element> EvalMult(ConstCiphertext<Element> ciphertext, const NativeInteger& scalar) const {
-    //  if (!ciphertext) {
-    //    OPENFHE_THROW( "Input ciphertext is nullptr");
-    //  }
-    //  return GetScheme()->EvalMult(ciphertext, scalar);
-    // }
-
-    // TODO (dsuponit): commented the code below to avoid compiler errors
-    // Ciphertext<Element> EvalMult(const NativeInteger& scalar, ConstCiphertext<Element> ciphertext) const {
-    //  return EvalMult(ciphertext, scalar);
-    // }
-
-    // TODO (dsuponit): commented the code below to avoid compiler errors
-    // void EvalMultInPlace(Ciphertext<Element>& ciphertext, const NativeInteger& scalar) const {
-    //  if (!ciphertext) {
-    //    OPENFHE_THROW( "Input ciphertext is nullptr");
-    //  }
-
-    //  GetScheme()->EvalMultInPlace(ciphertext, scalar);
-    // }
-
-    // TODO (dsuponit): commented the code below to avoid compiler errors
-    // void EvalMultInPlace(const NativeInteger& scalar, Ciphertext<Element>& ciphertext) const {
-    //  EvalMultInPlace(ciphertext, scalar);
-    // }
-
     /**
     * @brief Homomorphic multiplication of a ciphertext by a real number (CKKS only).
     *
@@ -3598,26 +3571,27 @@ public:
     }
 
     template <typename VectorDataType>
-    void EvalFuncBTSetup(uint32_t numSlots, const BigInteger& P, const std::vector<VectorDataType>& coeffs,
-                         const std::vector<uint32_t>& dim1, const std::vector<uint32_t>& levelBudget,
-                         long double scaleMod, uint32_t depthLeveledComputation = 0, size_t order = 1) {
-        GetScheme()->EvalFuncBTSetup(*this, numSlots, P, coeffs, dim1, levelBudget, scaleMod, depthLeveledComputation,
-                                     order);
+    void EvalFBTSetup(const std::vector<VectorDataType>& coeffs, uint32_t numSlots, const BigInteger& PIn,
+                      const BigInteger& POut, const BigInteger& Bigq, const PublicKey<DCRTPoly>& pubKey,
+                      const std::vector<uint32_t>& dim1, const std::vector<uint32_t>& levelBudget,
+                      uint32_t lvlsAfterBoot = 0, uint32_t depthLeveledComputation = 0, size_t order = 1) {
+        GetScheme()->EvalFBTSetup(*this, coeffs, numSlots, PIn, POut, Bigq, pubKey, dim1, levelBudget, lvlsAfterBoot,
+                                  depthLeveledComputation, order);
     }
 
     template <typename VectorDataType>
-    Ciphertext<Element> EvalFuncBT(ConstCiphertext<Element>& ciphertext, const std::vector<VectorDataType>& coeffs,
-                                   uint32_t digitBitSize, const BigInteger& initialScaling, uint64_t postScaling,
-                                   uint32_t levelToReduce = 0, size_t order = 1) {
-        return GetScheme()->EvalFuncBT(ciphertext, coeffs, digitBitSize, initialScaling, postScaling, levelToReduce,
-                                       order);
+    Ciphertext<Element> EvalFBT(ConstCiphertext<Element>& ciphertext, const std::vector<VectorDataType>& coeffs,
+                                uint32_t digitBitSize, const BigInteger& initialScaling, uint64_t postScaling,
+                                uint32_t levelToReduce = 0, size_t order = 1) {
+        return GetScheme()->EvalFBT(ciphertext, coeffs, digitBitSize, initialScaling, postScaling, levelToReduce,
+                                    order);
     }
 
     template <typename VectorDataType>
-    Ciphertext<Element> EvalFuncBTNoDecoding(ConstCiphertext<Element>& ciphertext,
-                                             const std::vector<VectorDataType>& coeffs, uint32_t digitBitSize,
-                                             const BigInteger& initialScaling, size_t order = 1) {
-        return GetScheme()->EvalFuncBTNoDecoding(ciphertext, coeffs, digitBitSize, initialScaling, order);
+    Ciphertext<Element> EvalFBTNoDecoding(ConstCiphertext<Element>& ciphertext,
+                                          const std::vector<VectorDataType>& coeffs, uint32_t digitBitSize,
+                                          const BigInteger& initialScaling, size_t order = 1) {
+        return GetScheme()->EvalFBTNoDecoding(ciphertext, coeffs, digitBitSize, initialScaling, order);
     }
 
     Ciphertext<Element> EvalHomDecoding(ConstCiphertext<Element>& ciphertext, uint64_t postScaling,
