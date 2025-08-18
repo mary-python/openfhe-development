@@ -27,6 +27,7 @@ File Listing
 - [depth-bfvrns-behz.cpp](depth-bfvrns-behz.cpp): demonstrates use of the BEHZ BFV variant for basic homomorphic encryption
 - [depth-bgvrns.cpp](depth-bgvrns.cpp): demonstrates use of the BGVrns scheme for basic homomorphic encryption
 - [function-evaluation.cpp](function-evaluation.cpp): demonstrates the evaluation of a non-polynomial function using a Chebyshev approximation using CKKS
+- [functional-bootstrapping-ckks.cpp](functional-bootstrapping-ckks.cpp): demonstrates the evaluation of a discrete lookup table over a RLWE ciphertext using CKKS
 - [inner-product.cpp](inner-product.cpp): demonstrates the evaluation of inner product using CKKS and BFV
 - [interactive-bootstrapping.cpp](interactive-bootstrapping.cpp): two examples of $2$-party interactive bootstrapping (the second one is with Chebyshev interpolation)
 - [iterative-ckks-bootstrapping.cpp](iterative-ckks-bootstrapping.cpp): demonstrates how to run multiple iterations of CKKS bootstrapping to improve precision
@@ -134,7 +135,7 @@ If the set function is called for a parameter which is not available for the giv
 
 **float standardDeviation** - error distribution parameter (recommended for advanced users), used for Gaussian error generation. The set method is `SetStandardDeviation`.
 
-**SecretKeyDist secretKeyDist** - secret key distribution: GAUSSIAN, UNIFORM_TERNARY, SPARSE_TERNARY. The set method is `SetSecretKeyDist`.
+**SecretKeyDist secretKeyDist** - secret key distribution: GAUSSIAN, UNIFORM_TERNARY, SPARSE_TERNARY, SPARSE_ENCAPSULATED. The set method is `SetSecretKeyDist`.
 
 **uint32_t maxRelinSkDeg** - max relinearization degree of secret key polynomial (used for lazy relinearization). The set method is `SetMaxRelinSkDeg`.
 

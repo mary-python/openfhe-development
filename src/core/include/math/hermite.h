@@ -1,7 +1,8 @@
+
 //==================================================================================
 // BSD 2-Clause License
 //
-// Copyright (c) 2014-2022, NJIT, Duality Technologies Inc. and other contributors
+// Copyright (c) 2014-2025, NJIT, Duality Technologies Inc. and other contributors
 //
 // All rights reserved.
 //
@@ -29,55 +30,34 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //==================================================================================
 
-#ifndef LBCRYPTO_CRYPTO_BGVRNS_SCHEME_H
-#define LBCRYPTO_CRYPTO_BGVRNS_SCHEME_H
+#ifndef LBCRYPTO_INC_MATH_HERMITE_H
+#define LBCRYPTO_INC_MATH_HERMITE_H
 
-#include "schemerns/rns-scheme.h"
+#include <complex>
+#include <cstdint>
+#include <functional>
+#include <vector>
 
-#include "scheme/bgvrns/bgvrns-parametergeneration.h"
-#include "utils/serializable.h"
-
-#include <string>
-#include <memory>
-
-/**
- * @namespace lbcrypto
- * The namespace of lbcrypto
- */
 namespace lbcrypto {
 
-class SchemeBGVRNS : public SchemeRNS {
-public:
-    SchemeBGVRNS() {
-        this->m_ParamsGen = std::make_shared<ParameterGenerationBGVRNS>();
-    }
+/**
+ * Method for calculating the intermediate Hermite trigonometric interpolation (of order 1)
+ * coefficients for an input function. These coefficents can be input into
+ * EvalPoly over ciphertexts encrypting exp(2*Pi*x) to evaluate the function.
+ * The coefficients are divided by 2 to account for the fact that the real part
+ * of the output of EvalPoly needs to be taken in order to get the Hermite
+ * Trigonometric Interpolation result.
+ *
+ *
+ * @param func is the function to be approximated
+ * @param p number of interpolation points
+ * @return the coefficients of the intermediate Hermite trigonometric interpolation.
+ */
 
-    virtual ~SchemeBGVRNS() {}
+// TODO: templatize this
+std::vector<std::complex<double>> GetHermiteTrigCoefficients(std::function<int64_t(int64_t)> func, uint32_t p,
+                                                             size_t order, double scale);
 
-    bool operator==(const SchemeBase<DCRTPoly>& sch) const override {
-        return (typeid(sch) == typeid(SchemeBGVRNS));
-    }
-
-    void Enable(PKESchemeFeature feature) override;
-
-    /////////////////////////////////////
-    // SERIALIZATION
-    /////////////////////////////////////
-
-    template <class Archive>
-    void save(Archive& ar, std::uint32_t const version) const {
-        ar(cereal::base_class<SchemeRNS>(this));
-    }
-
-    template <class Archive>
-    void load(Archive& ar, std::uint32_t const version) {
-        ar(cereal::base_class<SchemeRNS>(this));
-    }
-
-    std::string SerializedObjectName() const override {
-        return "SchemeBGVRNS";
-    }
-};
 }  // namespace lbcrypto
 
 #endif

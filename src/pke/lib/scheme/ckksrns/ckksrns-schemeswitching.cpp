@@ -43,6 +43,7 @@
 
 #include "math/dftransform.h"
 
+#include <cmath>
 #include <iterator>
 #include <limits>
 #include <string>
@@ -593,9 +594,9 @@ void SWITCHCKKSRNS::FitToNativeVector(uint32_t ringDim, const std::vector<int64_
 // Key and modulus switch and extraction methods
 //------------------------------------------------------------------------------
 
-NativeInteger RoundqQAlter(const NativeInteger& v, const NativeInteger& q, const NativeInteger& Q) {
-    return NativeInteger(
-               (BasicInteger)std::floor(0.5 + v.ConvertToDouble() * q.ConvertToDouble() / Q.ConvertToDouble()))
+static NativeInteger RoundqQAlter(NativeInteger v, NativeInteger q, NativeInteger Q) {
+    return NativeInteger(static_cast<BasicInteger>(
+                             std::floor(0.5 + v.ConvertToDouble() * q.ConvertToDouble() / Q.ConvertToDouble())))
         .Mod(q);
 }
 
@@ -1642,7 +1643,7 @@ Ciphertext<DCRTPoly> SWITCHCKKSRNS::EvalFHEWtoCKKS(std::vector<std::shared_ptr<L
     for (int32_t j = 1; j < BT_ITER + 1; j++) {
         BminusAdotS3 = ccCKKS->EvalMult(BminusAdotS3, BminusAdotS3);
         ccCKKS->EvalAddInPlace(BminusAdotS3, BminusAdotS3);
-        double scalar = 1.0 / std::pow((2.0 * Pi), std::pow(2.0, j - BT_ITER));
+        double scalar = 1.0 / std::pow((2.0 * M_PI), std::pow(2.0, j - BT_ITER));
         ccCKKS->EvalSubInPlace(BminusAdotS3, scalar);
         if (cryptoParamsCKKS->GetScalingTechnique() == FIXEDMANUAL) {
             ccCKKS->ModReduceInPlace(BminusAdotS3);
@@ -1659,7 +1660,7 @@ Ciphertext<DCRTPoly> SWITCHCKKSRNS::EvalFHEWtoCKKS(std::vector<std::shared_ptr<L
      * the correct post-scaling factor.
      * Moreover, we have to account for the different encoding the end ciphertext should have.
      */
-    double postScale = (p >= 1 && p <= 4) ? (static_cast<double>(2) * Pi) : static_cast<double>(p);
+    double postScale = (p >= 1 && p <= 4) ? (2.0 * M_PI) : static_cast<double>(p);
     double postBias  = 0.0;
     if (pmin != 0) {
         postScale *= (pmax - pmin) / 4.0;
