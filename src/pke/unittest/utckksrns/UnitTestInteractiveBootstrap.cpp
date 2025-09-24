@@ -45,7 +45,7 @@ using namespace lbcrypto;
 class Params;
 
 //===========================================================================================================
-enum TEST_CASE_TYPE {
+enum TEST_CASE_TYPE : int {
     INTERACTIVE_MP_BOOT = 0,
     INTERACTIVE_MP_BOOT_CHEBYSHEV,
     INTERACTIVE_MP_BOOT_ENCRYPT_2PARTY_ONLY,

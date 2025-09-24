@@ -45,7 +45,7 @@
 using namespace lbcrypto;
 
 //===========================================================================================================
-enum TEST_CASE_TYPE {
+enum TEST_CASE_TYPE : int {
     EVAL_POLY = 0,
     EVAL_CHEB_DIVISION,
     EVAL_CHEB_LOGIT,

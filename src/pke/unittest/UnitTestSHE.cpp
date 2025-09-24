@@ -45,7 +45,7 @@
 using namespace lbcrypto;
 
 //===========================================================================================================
-enum TEST_CASE_TYPE {
+enum TEST_CASE_TYPE : int {
     ADD_PACKED = 0,
     MULT_COEF_PACKED,
     MULT_PACKED,

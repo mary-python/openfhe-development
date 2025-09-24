@@ -58,7 +58,7 @@
 
 using namespace lbcrypto;
 
-enum TEST_CASE_TYPE {
+enum TEST_CASE_TYPE : int {
     FBT_ARBLUT = 0,
     FBT_SIGNDIGIT,
     FBT_CONSECLEV,

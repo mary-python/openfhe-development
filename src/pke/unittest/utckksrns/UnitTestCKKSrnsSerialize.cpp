@@ -46,7 +46,7 @@
 using namespace lbcrypto;
 
 //===========================================================================================================
-enum TEST_CASE_TYPE {
+enum TEST_CASE_TYPE : int {
     CONTEXT_WITH_SERTYPE = 0,
     KEYS_AND_CIPHERTEXTS,
     NO_CRT_TABLES,

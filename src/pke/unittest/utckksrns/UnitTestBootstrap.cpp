@@ -49,7 +49,7 @@ using namespace lbcrypto;
 using namespace std::literals;
 
 //===========================================================================================================
-enum TEST_CASE_TYPE {
+enum TEST_CASE_TYPE : int {
     BOOTSTRAP_FULL = 0,
     BOOTSTRAP_EDGE,
     BOOTSTRAP_SPARSE,

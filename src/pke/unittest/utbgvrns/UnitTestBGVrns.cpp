@@ -41,7 +41,7 @@
 using namespace lbcrypto;
 
 //===========================================================================================================
-enum TEST_CASE_TYPE {
+enum TEST_CASE_TYPE : int {
     ADD_PACKED_UTBGVRNS = 0,
     MULT_PACKED_UTBGVRNS,
     EVALATINDEX_UTBGVRNS,

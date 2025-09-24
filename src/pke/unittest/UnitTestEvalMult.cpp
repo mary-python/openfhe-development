@@ -39,7 +39,7 @@
 using namespace lbcrypto;
 
 //===========================================================================================================
-enum TEST_CASE_TYPE {
+enum TEST_CASE_TYPE : int {
     EVAL_MULT_ERROR_HANDLING = 0,
     EVAL_MULT_MANY_ERROR_HANDLING,
     RELIN_TEST,
