@@ -45,13 +45,13 @@ const BigInteger QBFVINIT(BigInteger(1) << 60);
 const BigInteger QBFVINITLARGE(BigInteger(1) << 80);
 
 void ArbitraryLUT(BigInteger QBFVInit, BigInteger PInput, BigInteger POutput, BigInteger Q, BigInteger Bigq,
-                  uint32_t scaleTHI, size_t order, uint32_t numSlots, uint32_t ringDim,
+                  uint64_t scaleTHI, size_t order, uint32_t numSlots, uint32_t ringDim,
                   std::function<int64_t(int64_t)> func);
 void MultiValueBootstrapping(BigInteger QBFVInit, BigInteger PInput, BigInteger POutput, BigInteger Q, BigInteger Bigq,
-                             uint32_t scaleTHI, size_t order, uint32_t numSlots, uint32_t ringDim,
+                             uint64_t scaleTHI, size_t order, uint32_t numSlots, uint32_t ringDim,
                              uint32_t levelComputation);
 void MultiPrecisionSign(BigInteger QBFVInit, BigInteger PInput, BigInteger PDigit, BigInteger Q, BigInteger Bigq,
-                        uint32_t scaleTHI, uint32_t scaleStepTHI, size_t order, uint32_t numSlots, uint32_t ringDim);
+                        uint64_t scaleTHI, uint64_t scaleStepTHI, size_t order, uint32_t numSlots, uint32_t ringDim);
 
 int main() {
     std::cerr << "\n*1.* Compute the function (x % PInput - POutput / 2) % POutput." << std::endl << std::endl;
@@ -97,7 +97,7 @@ int main() {
 }
 
 void ArbitraryLUT(BigInteger QBFVInit, BigInteger PInput, BigInteger POutput, BigInteger Q, BigInteger Bigq,
-                  uint32_t scaleTHI, size_t order, uint32_t numSlots, uint32_t ringDim,
+                  uint64_t scaleTHI, size_t order, uint32_t numSlots, uint32_t ringDim,
                   std::function<int64_t(int64_t)> func) {
     /* 1. Figure out whether sparse packing or full packing should be used.
      * numSlots represents the number of values to be encrypted in BFV.
@@ -163,12 +163,12 @@ void ArbitraryLUT(BigInteger QBFVInit, BigInteger PInput, BigInteger POutput, Bi
     parameters.SetNumLargeDigits(dnum);
     parameters.SetBatchSize(numSlotsCKKS);
     parameters.SetRingDim(ringDim);
-    uint32_t depth = levelsAvailableAfterBootstrap + lvlb[0] + lvlb[1] + 2;
+    uint32_t depth = levelsAvailableAfterBootstrap;
 
     if (binaryLUT)
-        depth += FHECKKSRNS::AdjustDepthFBT(coeffint, PInput, order, secretKeyDist);
+        depth += FHECKKSRNS::GetFBTDepth(lvlb, coeffint, PInput, order, secretKeyDist);
     else
-        depth += FHECKKSRNS::AdjustDepthFBT(coeffcomp, PInput, order, secretKeyDist);
+        depth += FHECKKSRNS::GetFBTDepth(lvlb, coeffcomp, PInput, order, secretKeyDist);
 
     parameters.SetMultiplicativeDepth(depth);
 
@@ -209,8 +209,8 @@ void ArbitraryLUT(BigInteger QBFVInit, BigInteger PInput, BigInteger POutput, Bi
 
     /* 7. Convert from the RLWE ciphertext to a CKKS ciphertext (both use the same secret key).
     */
-    auto ctxt = SchemeletRLWEMP::convert(*cc, ctxtBFV, keyPair.publicKey, Bigq, numSlotsCKKS,
-                                         depth - (levelsAvailableBeforeBootstrap > 0));
+    auto ctxt = SchemeletRLWEMP::ConvertRLWEToCKKS(*cc, ctxtBFV, keyPair.publicKey, Bigq, numSlotsCKKS,
+                                                   depth - (levelsAvailableBeforeBootstrap > 0));
 
     /* 8. Apply the LUT over the ciphertext.
     */
@@ -222,7 +222,7 @@ void ArbitraryLUT(BigInteger QBFVInit, BigInteger PInput, BigInteger POutput, Bi
 
     /* 9. Convert the result back to RLWE.
     */
-    auto polys = SchemeletRLWEMP::convert(ctxtAfterFBT, Q);
+    auto polys = SchemeletRLWEMP::ConvertCKKSToRLWE(ctxtAfterFBT, Q);
 
     auto computed = SchemeletRLWEMP::DecryptCoeff(polys, Q, POutput, keyPair.secretKey, ep, numSlotsCKKS, numSlots);
 
@@ -243,7 +243,7 @@ void ArbitraryLUT(BigInteger QBFVInit, BigInteger PInput, BigInteger POutput, Bi
 }
 
 void MultiValueBootstrapping(BigInteger QBFVInit, BigInteger PInput, BigInteger POutput, BigInteger Q, BigInteger Bigq,
-                             uint32_t scaleTHI, size_t order, uint32_t numSlots, uint32_t ringDim,
+                             uint64_t scaleTHI, size_t order, uint32_t numSlots, uint32_t ringDim,
                              uint32_t levelsComputation) {
     /* 1. Figure out whether sparse packing or full packing should be used.
      * numSlots represents the number of values to be encrypted in BFV.
@@ -321,12 +321,12 @@ void MultiValueBootstrapping(BigInteger QBFVInit, BigInteger PInput, BigInteger 
     parameters.SetNumLargeDigits(dnum);
     parameters.SetBatchSize(numSlotsCKKS);
     parameters.SetRingDim(ringDim);
-    uint32_t depth = levelsAvailableAfterBootstrap + lvlb[0] + lvlb[1] + 2 + levelsComputation;
+    uint32_t depth = levelsAvailableAfterBootstrap + levelsComputation;
 
     if (binaryLUT)
-        depth += FHECKKSRNS::AdjustDepthFBT(coeffint1, PInput, order, secretKeyDist);
+        depth += FHECKKSRNS::GetFBTDepth(lvlb, coeffint1, PInput, order, secretKeyDist);
     else
-        depth += FHECKKSRNS::AdjustDepthFBT(coeffcomp1, PInput, order, secretKeyDist);
+        depth += FHECKKSRNS::GetFBTDepth(lvlb, coeffcomp1, PInput, order, secretKeyDist);
 
     parameters.SetMultiplicativeDepth(depth);
 
@@ -384,8 +384,8 @@ void MultiValueBootstrapping(BigInteger QBFVInit, BigInteger PInput, BigInteger 
 
     /* 9. Convert from the RLWE ciphertext to a CKKS ciphertext (both use the same secret key).
     */
-    auto ctxt = SchemeletRLWEMP::convert(*cc, ctxtBFV, keyPair.publicKey, Bigq, numSlotsCKKS,
-                                         depth - (levelsAvailableBeforeBootstrap > 0));
+    auto ctxt = SchemeletRLWEMP::ConvertRLWEToCKKS(*cc, ctxtBFV, keyPair.publicKey, Bigq, numSlotsCKKS,
+                                                   depth - (levelsAvailableBeforeBootstrap > 0));
 
     /* 10. Apply the LUTs over the ciphertext.
      * First, compute the complex exponential and its powers to reuse.
@@ -448,7 +448,7 @@ void MultiValueBootstrapping(BigInteger QBFVInit, BigInteger PInput, BigInteger 
         ctxtAfterFBT2 = cc->EvalHomDecoding(ctxtAfterFBT2, scaleTHI, levelsComputation - 1);
     }
 
-    auto polys = SchemeletRLWEMP::convert(ctxtAfterFBT1, Q);
+    auto polys = SchemeletRLWEMP::ConvertCKKSToRLWE(ctxtAfterFBT1, Q);
 
     /* 11. Convert the results back to RLWE.
     */
@@ -465,7 +465,7 @@ void MultiValueBootstrapping(BigInteger QBFVInit, BigInteger PInput, BigInteger 
     auto max_error_it = std::max_element(exact.begin(), exact.end());
     std::cerr << "Max absolute error obtained in the first LUT: " << *max_error_it << std::endl << std::endl;
 
-    polys = SchemeletRLWEMP::convert(ctxtAfterFBT2, Q);
+    polys = SchemeletRLWEMP::ConvertCKKSToRLWE(ctxtAfterFBT2, Q);
 
     computed = SchemeletRLWEMP::DecryptCoeff(polys, Q, POutput, keyPair.secretKey, ep, numSlotsCKKS, numSlots, flagBR);
 
@@ -481,7 +481,7 @@ void MultiValueBootstrapping(BigInteger QBFVInit, BigInteger PInput, BigInteger 
 }
 
 void MultiPrecisionSign(BigInteger QBFVInit, BigInteger PInput, BigInteger PDigit, BigInteger Q, BigInteger Bigq,
-                        uint32_t scaleTHI, uint32_t scaleStepTHI, size_t order, uint32_t numSlots, uint32_t ringDim) {
+                        uint64_t scaleTHI, uint64_t scaleStepTHI, size_t order, uint32_t numSlots, uint32_t ringDim) {
     /* 1. Figure out whether sparse packing or full packing should be used.
      * numSlots represents the number of values to be encrypted in BFV.
      * If this number is the same as the ring dimension, then the CKKS slots is half.
@@ -567,12 +567,12 @@ void MultiPrecisionSign(BigInteger QBFVInit, BigInteger PInput, BigInteger PDigi
     parameters.SetBatchSize(numSlotsCKKS);
     parameters.SetRingDim(ringDim);
 
-    uint32_t depth = levelsAvailableAfterBootstrap + lvlb[0] + lvlb[1] + 2;
+    uint32_t depth = levelsAvailableAfterBootstrap;
 
     if (binaryLUT)
-        depth += FHECKKSRNS::AdjustDepthFBT(coeffintMod, PDigit, order, secretKeyDist);
+        depth += FHECKKSRNS::GetFBTDepth(lvlb, coeffintMod, PDigit, order, secretKeyDist);
     else
-        depth += FHECKKSRNS::AdjustDepthFBT(coeffcompMod, PDigit, order, secretKeyDist);
+        depth += FHECKKSRNS::GetFBTDepth(lvlb, coeffcompMod, PDigit, order, secretKeyDist);
 
     parameters.SetMultiplicativeDepth(depth);
 
@@ -611,13 +611,9 @@ void MultiPrecisionSign(BigInteger QBFVInit, BigInteger PInput, BigInteger PDigi
     auto ctxtBFV = SchemeletRLWEMP::EncryptCoeff(x, QBFVInit, PInput, keyPair.secretKey, ep);
 
     SchemeletRLWEMP::ModSwitch(ctxtBFV, Q, QBFVInit);
+    uint32_t QBFVBits = Q.GetMSB() - 1;
 
     /* 8. Set up the sign loop parameters. */
-    double QBFVDouble   = Q.ConvertToDouble();
-    double pBFVDouble   = PInput.ConvertToDouble();
-    double pDigitDouble = PDigit.ConvertToDouble();
-    double qDigitDouble = Bigq.ConvertToDouble();
-    BigInteger pOrig    = PInput;
     std::vector<int64_t> coeffint;
     std::vector<std::complex<double>> coeffcomp;
     if (binaryLUT)
@@ -625,9 +621,17 @@ void MultiPrecisionSign(BigInteger QBFVInit, BigInteger PInput, BigInteger PDigi
     else
         coeffcomp = coeffcompMod;
 
-    bool step           = false;
-    bool go             = QBFVDouble > qDigitDouble;
-    size_t levelsToDrop = 0;
+    const bool checkeq2       = PDigit.ConvertToInt() == 2;
+    const bool checkgt2       = PDigit.ConvertToInt() > 2;
+    const uint32_t pDigitBits = PDigit.GetMSB() - 1;
+
+    BigInteger QNew;
+    BigInteger pOrig = PInput;
+
+    bool step                = false;
+    bool go                  = QBFVBits > dcrtBits;
+    size_t levelsToDrop      = 0;
+    uint32_t postScalingBits = 0;
 
     /* 9. Start the sign loop. For arbitrary digit size, pNew > 2, the last iteration needs
      * to evaluate step pNew not mod pNew.
@@ -640,25 +644,22 @@ void MultiPrecisionSign(BigInteger QBFVInit, BigInteger PInput, BigInteger PDigi
         encryptedDigit[0].SwitchModulus(Bigq, 1, 0, 0);
         encryptedDigit[1].SwitchModulus(Bigq, 1, 0, 0);
 
-        auto ctxt = SchemeletRLWEMP::convert(*cc, encryptedDigit, keyPair.publicKey, Bigq, numSlotsCKKS,
-                                             depth - (levelsAvailableBeforeBootstrap > 0));
+        auto ctxt = SchemeletRLWEMP::ConvertRLWEToCKKS(*cc, encryptedDigit, keyPair.publicKey, Bigq, numSlotsCKKS,
+                                                       depth - (levelsAvailableBeforeBootstrap > 0));
 
         /* 9.2 Bootstrap the digit.*/
         Ciphertext<DCRTPoly> ctxtAfterFBT;
         if (binaryLUT)
-            ctxtAfterFBT = cc->EvalFBT(ctxt, coeffint, PDigit.GetMSB() - 1, ep->GetModulus(),
-                                       pOrig.ConvertToDouble() / pBFVDouble * scaleTHI, levelsToDrop, order);
+            ctxtAfterFBT = cc->EvalFBT(ctxt, coeffint, pDigitBits, ep->GetModulus(), scaleTHI * (1 << postScalingBits),
+                                       levelsToDrop, order);
         else
-            ctxtAfterFBT = cc->EvalFBT(ctxt, coeffcomp, PDigit.GetMSB() - 1, ep->GetModulus(),
-                                       pOrig.ConvertToDouble() / pBFVDouble * scaleTHI, levelsToDrop, order);
+            ctxtAfterFBT = cc->EvalFBT(ctxt, coeffcomp, pDigitBits, ep->GetModulus(), scaleTHI * (1 << postScalingBits),
+                                       levelsToDrop, order);
 
         /* 9.3 Convert the result back to RLWE and update the
          * plaintext and ciphertext modulus of the ciphertext for the next iteration.
          */
-        auto polys = SchemeletRLWEMP::convert(ctxtAfterFBT, Q);
-
-        BigInteger QNew(BigInteger(1) << static_cast<uint32_t>(std::log2(QBFVDouble) - std::log2(pDigitDouble)));
-        BigInteger PNew(BigInteger(1) << static_cast<uint32_t>(std::log2(pBFVDouble) - std::log2(pDigitDouble)));
+        auto polys = SchemeletRLWEMP::ConvertCKKSToRLWE(ctxtAfterFBT, Q);
 
         if (!step) {
             /* 9.4 If not in the last iteration, subtract the digit from the ciphertext. */
@@ -666,24 +667,25 @@ void MultiPrecisionSign(BigInteger QBFVInit, BigInteger PInput, BigInteger PDigi
             ctxtBFV[1] = ctxtBFV[1] - polys[1];
 
             /* 9.5 Do modulus switching from Q to QNew for the RLWE ciphertext. */
+            QNew       = Q >> pDigitBits;
             ctxtBFV[0] = ctxtBFV[0].MultiplyAndRound(QNew, Q);
             ctxtBFV[0].SwitchModulus(QNew, 1, 0, 0);
             ctxtBFV[1] = ctxtBFV[1].MultiplyAndRound(QNew, Q);
             ctxtBFV[1].SwitchModulus(QNew, 1, 0, 0);
-
-            QBFVDouble /= pDigitDouble;
-            pBFVDouble /= pDigitDouble;
-            Q      = QNew;
-            PInput = PNew;
+            Q >>= pDigitBits;
+            PInput >>= pDigitBits;
+            QBFVBits -= pDigitBits;
+            postScalingBits += pDigitBits;
         }
         else {
             /* 9.6 If in the last iteration, return the digit. */
-            ctxtBFV[0] = polys[0];
-            ctxtBFV[1] = polys[1];
+            ctxtBFV[0] = std::move(polys[0]);
+            ctxtBFV[1] = std::move(polys[1]);
         }
 
         /* 9.7 If in the last iteration, decrypt and assess correctness. */
-        if ((PDigit.ConvertToInt() == 2 && QBFVDouble <= qDigitDouble) || step) {
+        go = QBFVBits > dcrtBits;
+        if (step || (checkeq2 && !go)) {
             auto computed =
                 SchemeletRLWEMP::DecryptCoeff(ctxtBFV, Q, PInput, keyPair.secretKey, ep, numSlotsCKKS, numSlots);
 
@@ -699,9 +701,7 @@ void MultiPrecisionSign(BigInteger QBFVInit, BigInteger PInput, BigInteger PDigi
         }
 
         /* 9.8 Determine whether it is the last iteration and if not, update the parameters for the next iteration. */
-        go = QBFVDouble > qDigitDouble;
-
-        if (PDigit.ConvertToInt() > 2 && !go && !step) {
+        if (checkgt2 && !go && !step) {
             if (!binaryLUT)
                 coeffcomp = coeffcompStep;
             scaleTHI = scaleStepTHI;
