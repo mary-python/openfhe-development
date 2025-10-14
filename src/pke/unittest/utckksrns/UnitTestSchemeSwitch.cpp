@@ -51,7 +51,7 @@
 using namespace lbcrypto;
 
 //===========================================================================================================
-enum TEST_CASE_TYPE {
+enum TEST_CASE_TYPE : int {
     SCHEME_SWITCH_CKKS_FHEW,
     SCHEME_SWITCH_FHEW_CKKS,
     SCHEME_SWITCH_COMPARISON,

@@ -44,7 +44,7 @@ using namespace lbcrypto;
 class Params;
 
 //===========================================================================================================
-enum TEST_CASE_TYPE {
+enum TEST_CASE_TYPE : int {
     BGVRNS_AUTOMORPHISM = 0,
     EVAL_AT_INDX_PACKED_ARRAY,
     EVAL_SUM_PACKED_ARRAY,

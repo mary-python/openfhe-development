@@ -50,7 +50,7 @@ using namespace lbcrypto;
 
 #if NATIVEINT == 64
 //===========================================================================================================
-enum TEST_CASE_TYPE {
+enum TEST_CASE_TYPE : int {
     ADD_PACKED = 0,
     MULT_PACKED,
     SCALE_FACTOR_ADJUSTMENTS,

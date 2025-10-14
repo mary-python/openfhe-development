@@ -50,7 +50,7 @@ using namespace lbcrypto;
 using namespace std::literals;
 
 //===========================================================================================================
-enum TEST_CASE_TYPE {
+enum TEST_CASE_TYPE : int {
     ADD_PACKED = 0,
     MULT_PACKED,
     SCALE_FACTOR_ADJUSTMENTS,
@@ -1929,7 +1929,7 @@ protected:
 
             // Checking if metadata is carried over in EvalAdd(ctx,ctx)
             Ciphertext<Element> ciphertext1Clone = ciphertext1->Clone();
-            cc->EvalAddInPlace(ciphertext1, ciphertext2);
+            cc->EvalAddInPlace(ciphertext1Clone, ciphertext2);
             auto addCCInPlaceValTest = MetadataTest::GetMetadata<Element>(ciphertext1Clone);
             EXPECT_EQ(val1->GetMetadata(), addCCInPlaceValTest->GetMetadata())
                 << "Ciphertext metadata mismatch in EvalAddInPlace(ctx,ctx)";
